@@ -79,3 +79,22 @@ export default function HomePage() {
     </div>
   );
 }
+import { ScootLogo } from "@/components/logos/scoot-logo";
+import { Header } from "@/components/layout/header";
+
+function HomePage() {
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="container mx-auto py-10 px-4">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <ScootLogo className="h-24 w-24 text-primary" />
+          <h1 className="text-3xl font-bold tracking-tight">Welcome to Scoot</h1>
+          {/* Rest of your home page content */}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default HomePage;
