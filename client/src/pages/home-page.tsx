@@ -45,7 +45,7 @@ export default function HomePage() {
         <div className="grid gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Basketball Club #34</CardTitle>
+              <CardTitle>Scoot</CardTitle>
             </CardHeader>
             <CardContent>
               {user && (
