@@ -19,6 +19,8 @@ export interface IStorage {
   createGame(players: number[], clubIndex: number): Promise<Game>;
   updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game>;
 
+  getAllUsers(): Promise<User[]>;
+
   sessionStore: session.Store;
 }
 
@@ -150,6 +152,10 @@ export class MemStorage implements IStorage {
 
     this.games.set(gameId, updatedGame);
     return updatedGame;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
   }
 }
 

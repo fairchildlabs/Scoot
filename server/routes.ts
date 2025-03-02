@@ -6,6 +6,13 @@ import { storage } from "./storage";
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
+    const users = await storage.getAllUsers();
+    res.json(users);
+  });
+
   app.get("/api/checkins", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const checkins = await storage.getCheckins(34);

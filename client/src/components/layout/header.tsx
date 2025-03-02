@@ -29,7 +29,7 @@ export function Header() {
           <div className="flex items-center gap-4">
             {(user.isEngineer || user.isRoot) && (
               <Link href="/users">
-                <Button variant="outline">Manage Users</Button>
+                <Button variant="outline">Manage Players</Button>
               </Link>
             )}
             <div className="flex items-center gap-2">
