@@ -1,10 +1,13 @@
-import { User, InsertUser, Game, Checkin, GamePlayer } from "@shared/schema";
-import createMemoryStore from "memorystore";
+import { users, type User, type InsertUser, checkins, type Checkin, type Game, games, type GamePlayer, gamePlayers } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 const scryptAsync = promisify(scrypt);
 
 export interface IStorage {
@@ -24,142 +27,111 @@ export interface IStorage {
   sessionStore: session.Store;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private checkins: Map<number, Checkin>;
-  private games: Map<number, Game>;
-  private gamePlayers: Map<number, GamePlayer[]>;
-
-  currentId: {
-    users: number;
-    checkins: number;
-    games: number;
-    gamePlayers: number;
-  };
-
+export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
-    this.checkins = new Map();
-    this.games = new Map();
-    this.gamePlayers = new Map();
-
-    this.currentId = {
-      users: 1,
-      checkins: 1,
-      games: 1,
-      gamePlayers: 1,
-    };
-
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId.users++;
-    const user: User = { 
-      id, 
-      ...insertUser,
-      isPlayer: insertUser.isPlayer ?? true,
-      isBank: insertUser.isBank ?? false,
-      isBook: insertUser.isBook ?? false,
-      isEngineer: insertUser.isEngineer ?? false,
-      isRoot: insertUser.isRoot ?? false,
-    };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]> {
-    return Array.from(this.checkins.values())
-      .filter(c => c.clubIndex === clubIndex && c.isActive)
-      .map(checkin => {
-        const user = this.users.get(checkin.userId);
-        return {
-          ...checkin,
-          username: user?.username || 'Unknown',
-        };
+    const results = await db
+      .select({
+        id: checkins.id,
+        userId: checkins.userId,
+        checkInTime: checkins.checkInTime,
+        isActive: checkins.isActive,
+        clubIndex: checkins.clubIndex,
+        username: users.username
       })
-      .sort((a, b) => a.checkInTime.getTime() - b.checkInTime.getTime());
+      .from(checkins)
+      .innerJoin(users, eq(checkins.userId, users.id))
+      .where(
+        and(
+          eq(checkins.clubIndex, clubIndex),
+          eq(checkins.isActive, true)
+        )
+      );
+
+    return results;
   }
 
   async createCheckin(userId: number, clubIndex: number): Promise<Checkin> {
-    const id = this.currentId.checkins++;
-    const checkin: Checkin = {
-      id,
-      userId,
-      clubIndex,
-      checkInTime: new Date(),
-      isActive: true,
-    };
-    this.checkins.set(id, checkin);
+    const [checkin] = await db
+      .insert(checkins)
+      .values({
+        userId,
+        clubIndex,
+        checkInTime: new Date(),
+        isActive: true,
+      })
+      .returning();
     return checkin;
   }
 
   async deactivateCheckin(checkinId: number): Promise<void> {
-    const checkin = this.checkins.get(checkinId);
-    if (checkin) {
-      checkin.isActive = false;
-      this.checkins.set(checkinId, checkin);
-    }
+    await db
+      .update(checkins)
+      .set({ isActive: false })
+      .where(eq(checkins.id, checkinId));
   }
 
   async createGame(players: number[], clubIndex: number): Promise<Game> {
-    const id = this.currentId.games++;
-    const game: Game = {
-      id,
-      startTime: new Date(),
-      endTime: null,
-      team1Score: null,
-      team2Score: null,
-      clubIndex,
-    };
-    this.games.set(id, game);
+    const [game] = await db
+      .insert(games)
+      .values({
+        startTime: new Date(),
+        clubIndex,
+      })
+      .returning();
 
-    const gamePlayers = players.map((userId, index) => ({
-      id: this.currentId.gamePlayers++,
-      gameId: id,
+    const gamePlayerValues = players.map((userId, index) => ({
+      gameId: game.id,
       userId,
       team: index < (players.length / 2) ? 1 : 2,
     }));
 
-    this.gamePlayers.set(id, gamePlayers);
+    await db.insert(gamePlayers).values(gamePlayerValues);
     return game;
   }
 
   async updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game> {
-    const game = this.games.get(gameId);
-    if (!game) throw new Error("Game not found");
-
-    const updatedGame: Game = {
-      ...game,
-      team1Score,
-      team2Score,
-      endTime: new Date(),
-    };
-
-    this.games.set(gameId, updatedGame);
-    return updatedGame;
+    const [game] = await db
+      .update(games)
+      .set({
+        team1Score,
+        team2Score,
+        endTime: new Date(),
+      })
+      .where(eq(games.id, gameId))
+      .returning();
+    return game;
   }
 
   async getAllUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
+    return await db.select().from(users);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
 
 // Create initial admin user with hashed password
 async function hashPassword(password: string) {
@@ -168,19 +140,25 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
-hashPassword(process.env.ADMIN_INITIAL_PASSWORD!).then(hashedPassword => {
-  storage.createUser({
-    username: "scuzzydude",
-    password: hashedPassword,
-    firstName: null,
-    lastName: null,
-    birthYear: 1900,
-    birthMonth: null,
-    birthDay: null,
-    isPlayer: true,
-    isBank: true,
-    isBook: true,
-    isEngineer: true,
-    isRoot: true,
+// Create initial admin user if ADMIN_INITIAL_PASSWORD is set
+if (process.env.ADMIN_INITIAL_PASSWORD) {
+  hashPassword(process.env.ADMIN_INITIAL_PASSWORD).then(async hashedPassword => {
+    const existingAdmin = await storage.getUserByUsername("scuzzydude");
+    if (!existingAdmin) {
+      await storage.createUser({
+        username: "scuzzydude",
+        password: hashedPassword,
+        firstName: null,
+        lastName: null,
+        birthYear: 1900,
+        birthMonth: undefined,
+        birthDay: undefined,
+        isPlayer: true,
+        isBank: true,
+        isBook: true,
+        isEngineer: true,
+        isRoot: true,
+      });
+    }
   });
-});
+}
