@@ -15,7 +15,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export default function UserManagementPage() {
   const { user, registerMutation } = useAuth();
@@ -33,6 +33,12 @@ export default function UserManagementPage() {
   const { data: checkins } = useQuery({
     queryKey: ["/api/checkins"],
   });
+
+  // Create a Set of checked-in user IDs for easy lookup
+  const checkedInUserIds = useMemo(() => {
+    if (!checkins) return new Set<number>();
+    return new Set(checkins.map((checkin: any) => checkin.userId));
+  }, [checkins]);
 
   const checkinMutation = useMutation({
     mutationFn: async (userId: number) => {
@@ -66,8 +72,8 @@ export default function UserManagementPage() {
     try {
       const result = await registerMutation.mutateAsync(data);
       setLastCreatedPlayer(result.username);
-      registerForm.reset(); // Clear the form
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] }); // Refresh the players list
+      registerForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     } catch (error) {
       console.error('Failed to create player:', error);
     }
@@ -145,12 +151,13 @@ export default function UserManagementPage() {
                           <TableCell>{player.birthYear}</TableCell>
                           <TableCell>
                             <Button 
-                              variant="outline" 
+                              variant={checkedInUserIds.has(player.id) ? "secondary" : "outline"}
                               size="sm"
                               onClick={() => checkinMutation.mutate(player.id)}
                               disabled={checkinMutation.isPending}
+                              className={checkedInUserIds.has(player.id) ? "bg-white hover:bg-white/90" : ""}
                             >
-                              Check In
+                              {checkedInUserIds.has(player.id) ? "Check Out" : "Check In"}
                             </Button>
                           </TableCell>
                         </TableRow>
