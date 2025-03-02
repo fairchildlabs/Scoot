@@ -15,9 +15,11 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
+import { useState } from "react";
 
 export default function UserManagementPage() {
   const { user, registerMutation } = useAuth();
+  const [lastCreatedPlayer, setLastCreatedPlayer] = useState<string | null>(null);
 
   // Redirect if not engineer/root
   if (!user?.isEngineer && !user?.isRoot) {
@@ -60,13 +62,31 @@ export default function UserManagementPage() {
     },
   });
 
+  const onSubmit = async (data: any) => {
+    try {
+      const result = await registerMutation.mutateAsync(data);
+      setLastCreatedPlayer(result.username);
+      registerForm.reset(); // Clear the form
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] }); // Refresh the players list
+    } catch (error) {
+      console.error('Failed to create player:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black">
       <Header />
       <main className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Player Management</CardTitle>
+            <div className="space-y-2">
+              <CardTitle>Player Management</CardTitle>
+              {lastCreatedPlayer && (
+                <p className="text-sm text-muted-foreground">
+                  Player created: {lastCreatedPlayer}
+                </p>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="roster" className="space-y-4">
@@ -142,7 +162,7 @@ export default function UserManagementPage() {
 
               <TabsContent value="create">
                 <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={registerForm.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
                       control={registerForm.control}
                       name="username"
