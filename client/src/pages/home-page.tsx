@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
-import { ScootLogo } from "@/components/ui/icons"; // Assuming this component exists
+import { ScootLogo } from "@/components/logos/scoot-logo";
 
 export default function HomePage() {
   const { user } = useAuth();
