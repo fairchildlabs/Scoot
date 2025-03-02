@@ -2,9 +2,20 @@ import { ScootLogo } from "../logos/scoot-logo";
 import { Button } from "../ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
+import { Badge } from "../ui/badge";
 
 export function Header() {
   const { user, logoutMutation } = useAuth();
+
+  function getUserPermissions(user: any) {
+    const permissions = [];
+    if (user.isPlayer) permissions.push('Player');
+    if (user.isBank) permissions.push('Bank');
+    if (user.isBook) permissions.push('Book');
+    if (user.isEngineer) permissions.push('Engineer');
+    if (user.isRoot) permissions.push('Root');
+    return permissions;
+  }
 
   return (
     <header className="bg-black border-b border-border">
@@ -13,12 +24,19 @@ export function Header() {
           <ScootLogo className="h-8 w-8 text-white" />
           <span className="text-white font-bold text-xl">Scoot</span>
         </Link>
-        
+
         {user ? (
           <div className="flex items-center gap-4">
-            <span className="text-white opacity-70">
-              {user.username} ({user.role})
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-white opacity-70">{user.username}</span>
+              <div className="flex gap-1">
+                {getUserPermissions(user).map((permission) => (
+                  <Badge key={permission} variant="outline" className="text-xs">
+                    {permission}
+                  </Badge>
+                ))}
+              </div>
+            </div>
             <Button 
               variant="outline" 
               onClick={() => logoutMutation.mutate()}

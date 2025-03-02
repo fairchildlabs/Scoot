@@ -2,17 +2,15 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const UserRole = {
-  ROOT: "root",
-  ENGINEER: "engineer",
-  PLAYER: "player",
-} as const;
-
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role", { enum: Object.values(UserRole) }).notNull().default(UserRole.PLAYER),
+  isPlayer: boolean("is_player").notNull().default(true),
+  isBank: boolean("is_bank").notNull().default(false),
+  isBook: boolean("is_book").notNull().default(false),
+  isEngineer: boolean("is_engineer").notNull().default(false),
+  isRoot: boolean("is_root").notNull().default(false),
 });
 
 export const games = pgTable("games", {
@@ -42,7 +40,11 @@ export const gamePlayers = pgTable("game_players", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
-  role: true,
+  isPlayer: true,
+  isBank: true,
+  isBook: true,
+  isEngineer: true,
+  isRoot: true,
 });
 
 export const insertGameSchema = createInsertSchema(games);

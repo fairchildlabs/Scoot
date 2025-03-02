@@ -2,14 +2,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, UserRole } from "@shared/schema";
+import { insertUserSchema } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { ScootLogo } from "@/components/logos/scoot-logo";
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -34,7 +35,11 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
-      role: UserRole.PLAYER,
+      isPlayer: true,
+      isBank: false,
+      isBook: false,
+      isEngineer: false,
+      isRoot: false,
     },
   });
 
@@ -42,8 +47,11 @@ export default function AuthPage() {
     <div className="min-h-screen bg-black flex">
       <div className="flex-1 flex items-center justify-center p-8">
         <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Welcome to Scoot</CardTitle>
+          <CardHeader className="space-y-2">
+            <div className="flex justify-center">
+              <ScootLogo className="h-12 w-12" />
+            </div>
+            <CardTitle className="text-center">Welcome to Scoot</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login">
@@ -113,27 +121,92 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={registerForm.control}
-                      name="role"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Role</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+
+                    <div className="space-y-4">
+                      <FormLabel>Permissions</FormLabel>
+                      <FormDescription>Select one or more permissions</FormDescription>
+
+                      <FormField
+                        control={registerForm.control}
+                        name="isPlayer"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a role" />
-                              </SelectTrigger>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                              />
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value={UserRole.PLAYER}>Player</SelectItem>
-                              <SelectItem value={UserRole.ENGINEER}>Engineer</SelectItem>
-                              <SelectItem value={UserRole.ROOT}>Root</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
+                            <FormLabel className="!mt-0">Player</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={registerForm.control}
+                        name="isBank"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">Bank</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={registerForm.control}
+                        name="isBook"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">Book</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={registerForm.control}
+                        name="isEngineer"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">Engineer</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={registerForm.control}
+                        name="isRoot"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox 
+                                checked={field.value} 
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">Root</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                       Register
                     </Button>
