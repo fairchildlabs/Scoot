@@ -16,9 +16,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import { useState, useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function UserManagementPage() {
   const { user, registerMutation } = useAuth();
+  const { toast } = useToast();
   const [lastCreatedPlayer, setLastCreatedPlayer] = useState<string | null>(null);
 
   // Redirect if not engineer/root
@@ -47,6 +49,13 @@ export default function UserManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Check-in failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -150,12 +159,12 @@ export default function UserManagementPage() {
                           <TableCell>{player.username}</TableCell>
                           <TableCell>{player.birthYear}</TableCell>
                           <TableCell>
-                            <Button 
+                            <Button
                               variant={checkedInUserIds.has(player.id) ? "secondary" : "outline"}
                               size="sm"
                               onClick={() => checkinMutation.mutate(player.id)}
                               disabled={checkinMutation.isPending}
-                              className={checkedInUserIds.has(player.id) ? "bg-white hover:bg-white/90" : ""}
+                              className={checkedInUserIds.has(player.id) ? "bg-white hover:bg-white/90 text-black" : ""}
                             >
                               {checkedInUserIds.has(player.id) ? "Check Out" : "Check In"}
                             </Button>
@@ -230,9 +239,9 @@ export default function UserManagementPage() {
                             <FormItem>
                               <FormLabel>Birth Year*</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  {...field} 
+                                <Input
+                                  type="number"
+                                  {...field}
                                   onChange={e => field.onChange(parseInt(e.target.value))}
                                 />
                               </FormControl>
@@ -247,8 +256,8 @@ export default function UserManagementPage() {
                             <FormItem>
                               <FormLabel>Month</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
+                                <Input
+                                  type="number"
                                   placeholder="1-12"
                                   {...field}
                                   value={field.value || ""}
@@ -269,7 +278,7 @@ export default function UserManagementPage() {
                             <FormItem>
                               <FormLabel>Day</FormLabel>
                               <FormControl>
-                                <Input 
+                                <Input
                                   type="number"
                                   placeholder="1-31"
                                   {...field}
@@ -296,8 +305,8 @@ export default function UserManagementPage() {
                         render={({ field }) => (
                           <FormItem className="flex items-center space-x-2">
                             <FormControl>
-                              <Checkbox 
-                                checked={field.value} 
+                              <Checkbox
+                                checked={field.value}
                                 onCheckedChange={field.onChange}
                               />
                             </FormControl>
@@ -312,8 +321,8 @@ export default function UserManagementPage() {
                         render={({ field }) => (
                           <FormItem className="flex items-center space-x-2">
                             <FormControl>
-                              <Checkbox 
-                                checked={field.value} 
+                              <Checkbox
+                                checked={field.value}
                                 onCheckedChange={field.onChange}
                               />
                             </FormControl>
@@ -328,8 +337,8 @@ export default function UserManagementPage() {
                         render={({ field }) => (
                           <FormItem className="flex items-center space-x-2">
                             <FormControl>
-                              <Checkbox 
-                                checked={field.value} 
+                              <Checkbox
+                                checked={field.value}
                                 onCheckedChange={field.onChange}
                               />
                             </FormControl>
@@ -344,8 +353,8 @@ export default function UserManagementPage() {
                         render={({ field }) => (
                           <FormItem className="flex items-center space-x-2">
                             <FormControl>
-                              <Checkbox 
-                                checked={field.value} 
+                              <Checkbox
+                                checked={field.value}
                                 onCheckedChange={field.onChange}
                               />
                             </FormControl>
@@ -360,8 +369,8 @@ export default function UserManagementPage() {
                         render={({ field }) => (
                           <FormItem className="flex items-center space-x-2">
                             <FormControl>
-                              <Checkbox 
-                                checked={field.value} 
+                              <Checkbox
+                                checked={field.value}
                                 onCheckedChange={field.onChange}
                               />
                             </FormControl>
