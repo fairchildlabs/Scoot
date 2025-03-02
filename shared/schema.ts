@@ -6,6 +6,11 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  birthYear: integer("birth_year").notNull(),
+  birthMonth: integer("birth_month"),
+  birthDay: integer("birth_day"),
   isPlayer: boolean("is_player").notNull().default(true),
   isBank: boolean("is_bank").notNull().default(false),
   isBook: boolean("is_book").notNull().default(false),
@@ -40,11 +45,20 @@ export const gamePlayers = pgTable("game_players", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  firstName: true,
+  lastName: true,
+  birthYear: true,
+  birthMonth: true,
+  birthDay: true,
   isPlayer: true,
   isBank: true,
   isBook: true,
   isEngineer: true,
   isRoot: true,
+}).extend({
+  birthYear: z.number().min(1900).max(new Date().getFullYear()),
+  birthMonth: z.number().min(1).max(12).optional(),
+  birthDay: z.number().min(1).max(31).optional(),
 });
 
 export const insertGameSchema = createInsertSchema(games);

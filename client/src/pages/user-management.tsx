@@ -24,6 +24,11 @@ export default function UserManagementPage() {
     defaultValues: {
       username: "",
       password: "",
+      firstName: "",
+      lastName: "",
+      birthYear: new Date().getFullYear(),
+      birthMonth: undefined,
+      birthDay: undefined,
       isPlayer: true,
       isBank: false,
       isBook: false,
@@ -67,6 +72,97 @@ export default function UserManagementPage() {
                     </FormItem>
                   )}
                 />
+
+                <div className="space-y-4">
+                  <FormField
+                    control={registerForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registerForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name (Optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={registerForm.control}
+                      name="birthYear"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Birth Year*</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              {...field} 
+                              onChange={e => field.onChange(parseInt(e.target.value))}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={registerForm.control}
+                      name="birthMonth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Month</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              placeholder="1-12"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={e => {
+                                const value = e.target.value ? parseInt(e.target.value) : undefined;
+                                field.onChange(value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={registerForm.control}
+                      name="birthDay"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Day</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number"
+                              placeholder="1-31"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={e => {
+                                const value = e.target.value ? parseInt(e.target.value) : undefined;
+                                field.onChange(value);
+                              }}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
 
                 <div className="space-y-4">
                   <FormLabel>Permissions</FormLabel>

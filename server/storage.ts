@@ -162,10 +162,15 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
-hashPassword("Hakeem.34").then(hashedPassword => {
+hashPassword(process.env.ADMIN_INITIAL_PASSWORD!).then(hashedPassword => {
   storage.createUser({
     username: "scuzzydude",
     password: hashedPassword,
+    firstName: null,
+    lastName: null,
+    birthYear: 1900,
+    birthMonth: null,
+    birthDay: null,
     isPlayer: true,
     isBank: true,
     isBook: true,
