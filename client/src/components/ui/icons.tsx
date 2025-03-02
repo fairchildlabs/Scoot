@@ -22,9 +22,6 @@ export const Icons = {
   // Add more icons as needed
 };
 
-export default Icons;
-import * as React from "react";
-
 export const ScootLogo: React.FC<React.SVGProps<SVGSVGElement>> = (props) => {
   return (
     <svg
@@ -43,4 +40,4 @@ export const ScootLogo: React.FC<React.SVGProps<SVGSVGElement>> = (props) => {
   );
 };
 
-// Add other icons as needed
+export default Icons;
