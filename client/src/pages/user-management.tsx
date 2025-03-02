@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
 
 export default function UserManagementPage() {
   const { user, registerMutation } = useAuth();
@@ -25,6 +26,10 @@ export default function UserManagementPage() {
 
   const { data: players } = useQuery({
     queryKey: ["/api/users"],
+  });
+
+  const { data: checkins } = useQuery({
+    queryKey: ["/api/checkins"],
   });
 
   const checkinMutation = useMutation({
@@ -64,11 +69,44 @@ export default function UserManagementPage() {
             <CardTitle>Player Management</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="list" className="space-y-4">
+            <Tabs defaultValue="roster" className="space-y-4">
               <TabsList>
+                <TabsTrigger value="roster">Today's Roster</TabsTrigger>
                 <TabsTrigger value="list">Player List</TabsTrigger>
                 <TabsTrigger value="create">Create New Player</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="roster">
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Queue Position</TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Check-in Time</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {checkins?.map((checkin: any, index: number) => (
+                        <TableRow key={checkin.id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{checkin.username}</TableCell>
+                          <TableCell>
+                            {format(new Date(checkin.checkInTime), 'h:mm a')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {(!checkins || checkins.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            No players checked in
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
 
               <TabsContent value="list">
                 <div className="rounded-md border">
