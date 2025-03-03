@@ -1,5 +1,3 @@
-import { FairchildLabsLogo } from "../logos/fairchild-labs-logo";
-
 export function Footer() {
   return (
     <footer className="bg-black border-t border-border py-8">
