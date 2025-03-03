@@ -8,22 +8,26 @@ import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 
 const PostgresSessionStore = connectPg(session);
-const scryptAsync = promisify(scrypt);
+
+function getCentralTime() {
+  const now = new Date();
+  return new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+}
+
+function getDateString(date: Date) {
+  return date.toISOString().split('T')[0];
+}
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-
   getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]>;
   createCheckin(userId: number, clubIndex: number): Promise<Checkin>;
   deactivateCheckin(checkinId: number): Promise<void>;
-
   createGame(players: number[], clubIndex: number): Promise<Game>;
   updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game>;
-
   getAllUsers(): Promise<User[]>;
-
   sessionStore: session.Store;
 }
 
@@ -53,6 +57,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]> {
+    const today = getDateString(getCentralTime());
+
     const results = await db
       .select({
         id: checkins.id,
@@ -60,6 +66,7 @@ export class DatabaseStorage implements IStorage {
         checkInTime: checkins.checkInTime,
         isActive: checkins.isActive,
         clubIndex: checkins.clubIndex,
+        checkInDate: checkins.checkInDate,
         username: users.username
       })
       .from(checkins)
@@ -67,7 +74,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(checkins.clubIndex, clubIndex),
-          eq(checkins.isActive, true)
+          eq(checkins.isActive, true),
+          eq(checkins.checkInDate, today)
         )
       );
 
@@ -75,13 +83,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCheckin(userId: number, clubIndex: number): Promise<Checkin> {
+    const now = getCentralTime();
     const [checkin] = await db
       .insert(checkins)
       .values({
         userId,
         clubIndex,
-        checkInTime: new Date(),
+        checkInTime: now,
         isActive: true,
+        checkInDate: getDateString(now),
       })
       .returning();
     return checkin;
@@ -133,15 +143,16 @@ export class DatabaseStorage implements IStorage {
 
 export const storage = new DatabaseStorage();
 
-// Create initial admin user with hashed password
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
-}
-
 // Create initial admin user if ADMIN_INITIAL_PASSWORD is set
 if (process.env.ADMIN_INITIAL_PASSWORD) {
+  const scryptAsync = promisify(scrypt);
+
+  async function hashPassword(password: string) {
+    const salt = randomBytes(16).toString("hex");
+    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+    return `${buf.toString("hex")}.${salt}`;
+  }
+
   hashPassword(process.env.ADMIN_INITIAL_PASSWORD).then(async hashedPassword => {
     const existingAdmin = await storage.getUserByUsername("scuzzydude");
     if (!existingAdmin) {

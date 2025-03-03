@@ -69,10 +69,7 @@ export function setupAuth(app: Express) {
       password: await hashPassword(req.body.password),
     });
 
-    req.login(user, (err) => {
-      if (err) return next(err);
-      res.status(201).json(user);
-    });
+    res.status(201).json(user);
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {

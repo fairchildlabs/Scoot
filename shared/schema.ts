@@ -33,6 +33,7 @@ export const checkins = pgTable("checkins", {
   checkInTime: timestamp("check_in_time").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   clubIndex: integer("club_index").notNull().default(34),
+  checkInDate: text("check_in_date").notNull(), // Store date in YYYY-MM-DD format
 });
 
 export const gamePlayers = pgTable("game_players", {
