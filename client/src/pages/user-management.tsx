@@ -18,11 +18,21 @@ import { format } from "date-fns";
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import * as z from 'zod';
 
 function EditUserDialog({ user, open, onClose }: { user: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const editForm = useForm({
-    resolver: zodResolver(insertUserSchema.partial().omit({ password: true })),
+    resolver: zodResolver(
+      insertUserSchema
+        .partial()
+        .omit({ password: true })
+        .extend({
+          email: z.string().email().optional().nullable(),
+          birthMonth: z.number().min(1).max(12).optional().nullable(),
+          birthDay: z.number().min(1).max(31).optional().nullable(),
+        })
+    ),
     defaultValues: {
       username: user.username,
       firstName: user.firstName || "",
@@ -30,8 +40,8 @@ function EditUserDialog({ user, open, onClose }: { user: any; open: boolean; onC
       email: user.email || "",
       phone: user.phone || "",
       birthYear: user.birthYear,
-      birthMonth: user.birthMonth,
-      birthDay: user.birthDay,
+      birthMonth: user.birthMonth || null,
+      birthDay: user.birthDay || null,
       isPlayer: user.isPlayer,
       isBank: user.isBank,
       isBook: user.isBook,
