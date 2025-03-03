@@ -75,9 +75,9 @@ export default function AuthPage() {
       </div>
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary to-primary/50 items-center justify-center p-8">
         <img 
-          src="/attached_assets/white_on_transparent_scoot.png" 
-          alt="Scoot Logo" 
-          className="w-64 h-64 object-contain"
+          src="attached_assets/white_on_transparent_scoot.png" 
+          alt="Scoot"
+          className="w-96 h-96 object-contain" 
         />
       </div>
     </div>
