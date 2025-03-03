@@ -74,12 +74,11 @@ export default function AuthPage() {
         </Card>
       </div>
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-primary to-primary/50 items-center justify-center p-8">
-        <div className="max-w-md text-white">
-          <h1 className="text-4xl font-bold mb-4">Basketball Management System</h1>
-          <p className="text-lg opacity-90">
-            Manage your basketball club efficiently with Scoot. Track games, players, and statistics all in one place.
-          </p>
-        </div>
+        <img 
+          src="/attached_assets/white_on_transparent_scoot.png" 
+          alt="Scoot Logo" 
+          className="w-64 h-64 object-contain"
+        />
       </div>
     </div>
   );

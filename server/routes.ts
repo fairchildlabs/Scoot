@@ -22,17 +22,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/checkins", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    // Check if user already has an active check-in for today
-    const existingCheckins = await storage.getCheckins(34);
-    const userAlreadyCheckedIn = existingCheckins.some(
-      checkin => checkin.userId === req.user!.id
-    );
+    // Only prevent duplicate check-ins if the user is checking themselves in
+    if (!req.user!.isEngineer && !req.user!.isRoot) {
+      const existingCheckins = await storage.getCheckins(34);
+      const userAlreadyCheckedIn = existingCheckins.some(
+        checkin => checkin.userId === req.user!.id
+      );
 
-    if (userAlreadyCheckedIn) {
-      return res.status(400).send("You are already checked in for today");
+      if (userAlreadyCheckedIn) {
+        return res.status(400).send("You are already checked in for today");
+      }
     }
 
-    const checkin = await storage.createCheckin(req.user!.id, 34);
+    const userId = req.user!.isEngineer || req.user!.isRoot ? req.body.userId : req.user!.id;
+    const checkin = await storage.createCheckin(userId, 34);
     res.json(checkin);
   });
 
