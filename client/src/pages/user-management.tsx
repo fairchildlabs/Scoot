@@ -17,11 +17,269 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format } from "date-fns";
 import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+function EditUserDialog({ user, open, onClose }: { user: any; open: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const editForm = useForm({
+    resolver: zodResolver(insertUserSchema.partial().omit({ password: true })),
+    defaultValues: {
+      username: user.username,
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      birthYear: user.birthYear,
+      birthMonth: user.birthMonth,
+      birthDay: user.birthDay,
+      isPlayer: user.isPlayer,
+      isBank: user.isBank,
+      isBook: user.isBook,
+      isEngineer: user.isEngineer,
+      isRoot: user.isRoot,
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", `/api/users/${user.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      onClose();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit User: {user.username}</DialogTitle>
+        </DialogHeader>
+        <Form {...editForm}>
+          <form onSubmit={editForm.handleSubmit((data) => editMutation.mutate(data))} className="space-y-4">
+            <FormField
+              control={editForm.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={editForm.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="email" {...field} value={field.value || ""} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={editForm.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="tel" {...field} value={field.value || ""} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={editForm.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name (Optional)</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value || ""} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={editForm.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name (Optional)</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value || ""} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={editForm.control}
+                name="birthYear"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Birth Year*</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        {...field}
+                        onChange={e => field.onChange(parseInt(e.target.value))}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="birthMonth"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Month</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="1-12"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={e => {
+                          const value = e.target.value ? parseInt(e.target.value) : undefined;
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="birthDay"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Day</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="1-31"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={e => {
+                          const value = e.target.value ? parseInt(e.target.value) : undefined;
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="space-y-4">
+              <FormLabel>Permissions</FormLabel>
+              <FormDescription>Select one or more permissions</FormDescription>
+              <FormField
+                control={editForm.control}
+                name="isPlayer"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="!mt-0">Player</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="isBank"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="!mt-0">Bank</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="isBook"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="!mt-0">Book</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="isEngineer"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="!mt-0">Engineer</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="isRoot"
+                render={({ field }) => (
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="!mt-0">Root</FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={editMutation.isPending}>
+              Save Changes
+            </Button>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function UserManagementPage() {
   const { user, registerMutation } = useAuth();
   const { toast } = useToast();
   const [lastCreatedPlayer, setLastCreatedPlayer] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
 
   // Redirect if not engineer/root
   if (!user?.isEngineer && !user?.isRoot) {
@@ -66,6 +324,8 @@ export default function UserManagementPage() {
       password: "",
       firstName: "",
       lastName: "",
+      email: "",
+      phone: "",
       birthYear: new Date().getFullYear(),
       birthMonth: undefined,
       birthDay: undefined,
@@ -87,6 +347,36 @@ export default function UserManagementPage() {
       console.error('Failed to create player:', error);
     }
   };
+
+  const createFormFields = (
+    <>
+      <FormField
+        control={registerForm.control}
+        name="email"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Email (Optional)</FormLabel>
+            <FormControl>
+              <Input type="email" {...field} value={field.value || ""} />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={registerForm.control}
+        name="phone"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Phone (Optional)</FormLabel>
+            <FormControl>
+              <Input type="tel" {...field} value={field.value || ""} />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+    </>
+  );
+
 
   return (
     <div className="min-h-screen bg-black">
@@ -159,15 +449,24 @@ export default function UserManagementPage() {
                           <TableCell>{player.username}</TableCell>
                           <TableCell>{player.birthYear}</TableCell>
                           <TableCell>
-                            <Button
-                              variant={checkedInUserIds.has(player.id) ? "secondary" : "outline"}
-                              size="sm"
-                              onClick={() => checkinMutation.mutate(player.id)}
-                              disabled={checkinMutation.isPending}
-                              className={checkedInUserIds.has(player.id) ? "bg-white hover:bg-white/90 text-black" : ""}
-                            >
-                              {checkedInUserIds.has(player.id) ? "Check Out" : "Check In"}
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant={checkedInUserIds.has(player.id) ? "secondary" : "outline"}
+                                size="sm"
+                                onClick={() => checkinMutation.mutate(player.id)}
+                                disabled={checkinMutation.isPending}
+                                className={checkedInUserIds.has(player.id) ? "bg-white hover:bg-white/90 text-black" : ""}
+                              >
+                                {checkedInUserIds.has(player.id) ? "Check Out" : "Check In"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingUser(player)}
+                              >
+                                Edit
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -203,7 +502,7 @@ export default function UserManagementPage() {
                         </FormItem>
                       )}
                     />
-
+                    {createFormFields}
                     <div className="space-y-4">
                       <FormField
                         control={registerForm.control}
@@ -217,7 +516,6 @@ export default function UserManagementPage() {
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={registerForm.control}
                         name="lastName"
@@ -230,7 +528,6 @@ export default function UserManagementPage() {
                           </FormItem>
                         )}
                       />
-
                       <div className="grid grid-cols-3 gap-4">
                         <FormField
                           control={registerForm.control}
@@ -248,7 +545,6 @@ export default function UserManagementPage() {
                             </FormItem>
                           )}
                         />
-
                         <FormField
                           control={registerForm.control}
                           name="birthMonth"
@@ -270,7 +566,6 @@ export default function UserManagementPage() {
                             </FormItem>
                           )}
                         />
-
                         <FormField
                           control={registerForm.control}
                           name="birthDay"
@@ -294,11 +589,9 @@ export default function UserManagementPage() {
                         />
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       <FormLabel>Permissions</FormLabel>
                       <FormDescription>Select one or more permissions</FormDescription>
-
                       <FormField
                         control={registerForm.control}
                         name="isPlayer"
@@ -314,7 +607,6 @@ export default function UserManagementPage() {
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={registerForm.control}
                         name="isBank"
@@ -330,7 +622,6 @@ export default function UserManagementPage() {
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={registerForm.control}
                         name="isBook"
@@ -346,7 +637,6 @@ export default function UserManagementPage() {
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={registerForm.control}
                         name="isEngineer"
@@ -362,7 +652,6 @@ export default function UserManagementPage() {
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={registerForm.control}
                         name="isRoot"
@@ -379,7 +668,6 @@ export default function UserManagementPage() {
                         )}
                       />
                     </div>
-
                     <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                       Create Player
                     </Button>
@@ -391,6 +679,13 @@ export default function UserManagementPage() {
         </Card>
       </main>
       <Footer />
+      {editingUser && (
+        <EditUserDialog
+          user={editingUser}
+          open={true}
+          onClose={() => setEditingUser(null)}
+        />
+      )}
     </div>
   );
 }

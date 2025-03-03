@@ -13,6 +13,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(users);
   });
 
+  app.patch("/api/users/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
+
+    const userId = parseInt(req.params.id);
+    const user = await storage.updateUser(userId, req.body);
+    res.json(user);
+  });
+
   app.get("/api/checkins", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const checkins = await storage.getCheckins(34);

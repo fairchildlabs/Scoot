@@ -8,6 +8,8 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
+  email: text("email"),
+  phone: text("phone"),
   birthYear: integer("birth_year").notNull(),
   birthMonth: integer("birth_month"),
   birthDay: integer("birth_day"),
@@ -48,6 +50,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   firstName: true,
   lastName: true,
+  email: true,
+  phone: true,
   birthYear: true,
   birthMonth: true,
   birthDay: true,
@@ -60,6 +64,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   birthYear: z.number().min(1900).max(new Date().getFullYear()),
   birthMonth: z.number().min(1).max(12).optional(),
   birthDay: z.number().min(1).max(31).optional(),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
 });
 
 export const insertGameSchema = createInsertSchema(games);

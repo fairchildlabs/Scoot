@@ -22,6 +22,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
   getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]>;
   createCheckin(userId: number, clubIndex: number): Promise<Checkin>;
   deactivateCheckin(checkinId: number): Promise<void>;
@@ -138,6 +139,15 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  async updateUser(id: number, updateData: Partial<InsertUser>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 }
 
