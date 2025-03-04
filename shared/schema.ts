@@ -94,7 +94,8 @@ export const insertGameSetSchema = createInsertSchema(gameSets, {
 }).omit({ 
   id: true,
   createdAt: true,
-  isActive: true 
+  isActive: true,
+  createdBy: true  // Explicitly omit createdBy as it's set by the server
 });
 
 export const insertGameSchema = createInsertSchema(games);
