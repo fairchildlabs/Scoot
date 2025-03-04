@@ -83,10 +83,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user!.isEngineer) return res.sendStatus(403);
 
     try {
+      console.log('Received game set data:', req.body);
       const validatedData = insertGameSetSchema.parse(req.body);
+      console.log('Validated game set data:', validatedData);
       const gameSet = await storage.createGameSet(req.user!.id, validatedData);
+      console.log('Created game set:', gameSet);
       res.json(gameSet);
     } catch (error) {
+      console.error('Error creating game set:', error);
       res.status(400).json({ error: error.message });
     }
   });
