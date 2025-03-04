@@ -6,11 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ScootLogo } from "@/components/logos/scoot-logo";
 import { format } from "date-fns";
+import { type GameSet } from "@shared/schema";
 
 export default function HomePage() {
   const { user } = useAuth();
 
-  const { data: activeGameSet } = useQuery({
+  const { data: activeGameSet } = useQuery<GameSet>({
     queryKey: ["/api/game-sets/active"],
   });
 
@@ -44,7 +45,7 @@ export default function HomePage() {
                 <CardTitle>
                   {activeGameSet ? (
                     <div className="flex flex-col space-y-1">
-                      <span>Game Set #{activeGameSet.id}</span>
+                      <span className="text-xl">Game Set #{activeGameSet.id}</span>
                       <span className="text-sm text-muted-foreground">
                         Created {format(new Date(activeGameSet.createdAt), 'PPp')}
                       </span>
