@@ -6,6 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Redirect } from "wouter";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+
+const courtOptions = ['East', 'West'] as const;
 
 export default function NewGamePage() {
   const { user } = useAuth();
@@ -26,6 +31,8 @@ export default function NewGamePage() {
     queryKey: ["/api/checkins"],
     enabled: !!user,
   });
+
+  const [selectedCourt, setSelectedCourt] = useState<typeof courtOptions[number]>('West');
 
   if (checkinsLoading || gameSetLoading) {
     return (
@@ -60,15 +67,34 @@ export default function NewGamePage() {
                 <p className="text-sm text-muted-foreground">Minimum 2 players required.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Available Players</h3>
-                <div className="grid gap-2">
-                  {checkins.map((checkin: any) => (
-                    <div key={checkin.id} className="flex items-center gap-2 p-2 bg-secondary rounded-md">
-                      <span>{checkin.username}</span>
-                    </div>
-                  ))}
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Select Court</h3>
+                  <RadioGroup
+                    value={selectedCourt}
+                    onValueChange={(value) => setSelectedCourt(value as typeof courtOptions[number])}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    {courtOptions.map((court) => (
+                      <div key={court} className="flex items-center space-x-2">
+                        <RadioGroupItem value={court} id={court} />
+                        <Label htmlFor={court}>{court}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Available Players</h3>
+                  <div className="grid gap-2">
+                    {checkins.map((checkin: any) => (
+                      <div key={checkin.id} className="flex items-center gap-2 p-2 bg-secondary rounded-md">
+                        <span>{checkin.username}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <Button className="w-full">Create Teams</Button>
               </div>
             )}

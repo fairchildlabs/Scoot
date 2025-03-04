@@ -458,7 +458,6 @@ export default function UserManagementPage() {
     defaultValues: {
       playersPerTeam: 4,
       gym: 'fonde' as const,
-      court: 'West' as const,
       maxConsecutiveTeamWins: 2,
       timeLimit: 15,
       winScore: 21,
@@ -558,26 +557,6 @@ export default function UserManagementPage() {
                   >
                     {gymOptions.map(gym => (
                       <option key={gym} value={gym}>{gym}</option>
-                    ))}
-                  </select>
-                </FormControl>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="court"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Court</FormLabel>
-                <FormControl>
-                  <select
-                    {...field}
-                    className="w-full p-2 rounded-md border border-input bg-background"
-                  >
-                    {courtOptions.map(court => (
-                      <option key={court} value={court}>{court}</option>
                     ))}
                   </select>
                 </FormControl>
