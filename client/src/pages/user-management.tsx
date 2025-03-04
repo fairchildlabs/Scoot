@@ -27,20 +27,6 @@ function EditUserDialog({ user, open, onClose }: { user: any; open: boolean; onC
       insertUserSchema
         .partial()
         .omit({ password: true })
-        .extend({
-          email: z.string()
-            .transform(str => str === '' ? null : str)
-            .nullable()
-            .refine(val => val === null || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
-              message: "Invalid email format",
-              skipNull: true,
-            }),
-          phone: z.string()
-            .transform(str => str === '' ? null : str)
-            .nullable(),
-          birthMonth: z.number().min(1).max(12).optional().nullable(),
-          birthDay: z.number().min(1).max(31).optional().nullable(),
-        })
     ),
     defaultValues: {
       username: user.username,

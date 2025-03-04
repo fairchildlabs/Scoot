@@ -2,6 +2,7 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Database schema remains unchanged
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -19,6 +20,42 @@ export const users = pgTable("users", {
   isEngineer: boolean("is_engineer").notNull().default(false),
   isRoot: boolean("is_root").notNull().default(false),
 });
+
+// Only validate required fields in base schema
+export const insertUserSchema = createInsertSchema(users)
+.extend({
+  // Required fields
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+  birthYear: z.number().min(1900).max(new Date().getFullYear()),
+
+  // Optional fields with proper validation
+  email: z.string()
+    .transform(str => str === '' ? null : str)
+    .nullable()
+    .refine(val => val === null || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+      message: "Invalid email format",
+      skipNull: true,
+    }),
+  phone: z.string()
+    .transform(str => str === '' ? null : str)
+    .nullable(),
+  birthMonth: z.number().min(1).max(12).optional().nullable(),
+  birthDay: z.number().min(1).max(31).optional().nullable(),
+  firstName: z.string().optional().nullable(),
+  lastName: z.string().optional().nullable(),
+});
+
+// Other schema exports remain unchanged
+export const insertGameSchema = createInsertSchema(games);
+export const insertCheckinSchema = createInsertSchema(checkins);
+export const insertGamePlayerSchema = createInsertSchema(gamePlayers);
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+export type Game = typeof games.$inferSelect;
+export type Checkin = typeof checkins.$inferSelect;
+export type GamePlayer = typeof gamePlayers.$inferSelect;
 
 export const games = pgTable("games", {
   id: serial("id").primaryKey(),
@@ -44,36 +81,3 @@ export const gamePlayers = pgTable("game_players", {
   userId: integer("user_id").notNull(),
   team: integer("team").notNull(), // 1 or 2
 });
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  firstName: true,
-  lastName: true,
-  email: true,
-  phone: true,
-  birthYear: true,
-  birthMonth: true,
-  birthDay: true,
-  isPlayer: true,
-  isBank: true,
-  isBook: true,
-  isEngineer: true,
-  isRoot: true,
-}).extend({
-  birthYear: z.number().min(1900).max(new Date().getFullYear()),
-  birthMonth: z.number().min(1).max(12).optional(),
-  birthDay: z.number().min(1).max(31).optional(),
-  email: z.string().email().optional().nullable(),
-  phone: z.string().optional().nullable(),
-});
-
-export const insertGameSchema = createInsertSchema(games);
-export const insertCheckinSchema = createInsertSchema(checkins);
-export const insertGamePlayerSchema = createInsertSchema(gamePlayers);
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
-export type Game = typeof games.$inferSelect;
-export type Checkin = typeof checkins.$inferSelect;
-export type GamePlayer = typeof gamePlayers.$inferSelect;
