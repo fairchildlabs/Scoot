@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -21,8 +21,23 @@ export const users = pgTable("users", {
   isRoot: boolean("is_root").notNull().default(false),
 });
 
+export const gameSets = pgTable("game_sets", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull(),
+  playersPerTeam: integer("players_per_team").notNull().default(4),
+  gym: text("gym").notNull().default('fonde'),
+  court: text("court").notNull().default('West'),
+  maxConsecutiveTeamWins: integer("max_consecutive_team_wins").notNull().default(2),
+  timeLimit: integer("time_limit").notNull().default(15), // in minutes
+  winScore: integer("win_score").notNull().default(21),
+  pointSystem: text("point_system").notNull().default('2s and 3s'),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
 export const games = pgTable("games", {
   id: serial("id").primaryKey(),
+  setId: integer("set_id").notNull(),
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time"),
   team1Score: integer("team1_score"),
@@ -36,7 +51,7 @@ export const checkins = pgTable("checkins", {
   checkInTime: timestamp("check_in_time").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   clubIndex: integer("club_index").notNull().default(34),
-  checkInDate: text("check_in_date").notNull(), // Store date in YYYY-MM-DD format
+  checkInDate: text("check_in_date").notNull(),
 });
 
 export const gamePlayers = pgTable("game_players", {
@@ -52,7 +67,7 @@ const userBaseSchema = createInsertSchema(users);
 export const insertUserSchema = userBaseSchema.extend({
   username: z.string()
     .min(1, "Username is required")
-    .transform(val => val.toLowerCase()), // Convert username to lowercase
+    .transform(val => val.toLowerCase()),
   password: z.string().min(1, "Password is required"),
   email: z.string().nullish().optional(),
   phone: z.string().nullish().optional(),
@@ -68,6 +83,20 @@ export const insertUserSchema = userBaseSchema.extend({
   isRoot: z.boolean().default(false),
 });
 
+export const insertGameSetSchema = createInsertSchema(gameSets, {
+  playersPerTeam: z.number().min(1).max(5),
+  gym: z.enum(['fonde']), 
+  court: z.enum(['East', 'West']),
+  maxConsecutiveTeamWins: z.number().min(1),
+  timeLimit: z.number().min(5).max(60),
+  winScore: z.number().min(1),
+  pointSystem: z.enum(['1s only', '2s only', '2s and 3s']),
+}).omit({ 
+  id: true,
+  createdAt: true,
+  isActive: true 
+});
+
 export const insertGameSchema = createInsertSchema(games);
 export const insertCheckinSchema = createInsertSchema(checkins);
 export const insertGamePlayerSchema = createInsertSchema(gamePlayers);
@@ -78,3 +107,5 @@ export type User = typeof users.$inferSelect;
 export type Game = typeof games.$inferSelect;
 export type Checkin = typeof checkins.$inferSelect;
 export type GamePlayer = typeof gamePlayers.$inferSelect;
+export type GameSet = typeof gameSets.$inferSelect;
+export type InsertGameSet = z.infer<typeof insertGameSetSchema>;

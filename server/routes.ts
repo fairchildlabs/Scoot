@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import { insertGameSetSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -75,6 +76,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     );
 
     res.json(game);
+  });
+
+  app.post("/api/game-sets", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer) return res.sendStatus(403);
+
+    try {
+      const validatedData = insertGameSetSchema.parse(req.body);
+      const gameSet = await storage.createGameSet(req.user!.id, validatedData);
+      res.json(gameSet);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/game-sets/active", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const gameSet = await storage.getActiveGameSet();
+    res.json(gameSet || null);
+  });
+
+  app.get("/api/game-sets", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const gameSets = await storage.getAllGameSets();
+    res.json(gameSets);
+  });
+
+  app.post("/api/game-sets/:id/deactivate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer) return res.sendStatus(403);
+
+    await storage.deactivateGameSet(parseInt(req.params.id));
+    res.sendStatus(200);
   });
 
   const httpServer = createServer(app);

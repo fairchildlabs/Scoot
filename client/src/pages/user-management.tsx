@@ -21,6 +21,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import * as z from 'zod';
 import { CaretSortIcon, ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 
+// Add after TabsTrigger imports:
+const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
+const gymOptions = ['fonde'] as const;
+const courtOptions = ['East', 'West'] as const;
+
+
 type SortDirection = "asc" | "desc";
 type SortConfig = {
   key: string;
@@ -442,6 +448,195 @@ export default function UserManagementPage() {
     </>
   );
 
+  function NewGameSetForm() {
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    const form = useForm({
+      resolver: zodResolver(insertGameSetSchema), //Requires insertGameSetSchema definition
+      defaultValues: {
+        playersPerTeam: 4,
+        gym: 'fonde',
+        court: 'West',
+        maxConsecutiveTeamWins: 2,
+        timeLimit: 15,
+        winScore: 21,
+        pointSystem: '2s and 3s',
+      },
+    });
+
+    const createGameSetMutation = useMutation({
+      mutationFn: async (data: InsertGameSet) => { //Requires InsertGameSet definition
+        const res = await apiRequest("POST", "/api/game-sets", data);
+        return res.json();
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
+        toast({
+          title: "Success",
+          description: "New game set created",
+        });
+        form.reset();
+      },
+      onError: (error: Error) => {
+        toast({
+          title: "Failed to create game set",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    });
+
+    return (
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit((data) => createGameSetMutation.mutate(data))} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="playersPerTeam"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Players Per Team</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={5}
+                    {...field}
+                    onChange={e => field.onChange(parseInt(e.target.value))}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="gym"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Gym</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    className="w-full p-2 rounded-md border border-input bg-background"
+                  >
+                    {gymOptions.map(gym => (
+                      <option key={gym} value={gym}>{gym}</option>
+                    ))}
+                  </select>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="court"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Court</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    className="w-full p-2 rounded-md border border-input bg-background"
+                  >
+                    {courtOptions.map(court => (
+                      <option key={court} value={court}>{court}</option>
+                    ))}
+                  </select>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="maxConsecutiveTeamWins"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Max Consecutive Team Wins</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={1}
+                    {...field}
+                    onChange={e => field.onChange(parseInt(e.target.value))}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="timeLimit"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Time Limit (minutes)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={5}
+                    max={60}
+                    {...field}
+                    onChange={e => field.onChange(parseInt(e.target.value))}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="winScore"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Win Score</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={1}
+                    {...field}
+                    onChange={e => field.onChange(parseInt(e.target.value))}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="pointSystem"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Point System</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    className="w-full p-2 rounded-md border border-input bg-background"
+                  >
+                    {pointSystemOptions.map(system => (
+                      <option key={system} value={system}>{system}</option>
+                    ))}
+                  </select>
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={createGameSetMutation.isPending}
+          >
+            Create Game Set
+          </Button>
+        </form>
+      </Form>
+    );
+  }
+
+
   return (
     <div className="min-h-screen bg-black">
       <Header />
@@ -463,6 +658,7 @@ export default function UserManagementPage() {
                 <TabsTrigger value="roster">Today's Roster</TabsTrigger>
                 <TabsTrigger value="list">Player List</TabsTrigger>
                 <TabsTrigger value="create">Create New Player</TabsTrigger>
+                <TabsTrigger value="game-set">New Game Set</TabsTrigger>
               </TabsList>
 
               <TabsContent value="roster">
@@ -788,6 +984,9 @@ export default function UserManagementPage() {
                     </Button>
                   </form>
                 </Form>
+              </TabsContent>
+              <TabsContent value="game-set">
+                <NewGameSetForm />
               </TabsContent>
             </Tabs>
           </CardContent>

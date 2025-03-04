@@ -1,6 +1,6 @@
-import { users, type User, type InsertUser, checkins, type Checkin, type Game, games, type GamePlayer, gamePlayers } from "@shared/schema";
+import { users, type User, type InsertUser, checkins, type Checkin, type Game, games, type GamePlayer, gamePlayers, type GameSet, gameSets, type InsertGameSet } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -30,6 +30,10 @@ export interface IStorage {
   updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game>;
   getAllUsers(): Promise<User[]>;
   sessionStore: session.Store;
+  createGameSet(userId: number, gameSet: InsertGameSet): Promise<GameSet>;
+  getActiveGameSet(): Promise<GameSet | undefined>;
+  getAllGameSets(): Promise<GameSet[]>;
+  deactivateGameSet(setId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -152,11 +156,49 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+
+  async createGameSet(userId: number, gameSet: InsertGameSet): Promise<GameSet> {
+    await db
+      .update(gameSets)
+      .set({ isActive: false })
+      .where(eq(gameSets.isActive, true));
+
+    const [newGameSet] = await db
+      .insert(gameSets)
+      .values({
+        ...gameSet,
+        createdBy: userId,
+      })
+      .returning();
+
+    return newGameSet;
+  }
+
+  async getActiveGameSet(): Promise<GameSet | undefined> {
+    const [gameSet] = await db
+      .select()
+      .from(gameSets)
+      .where(eq(gameSets.isActive, true));
+    return gameSet;
+  }
+
+  async getAllGameSets(): Promise<GameSet[]> {
+    return await db
+      .select()
+      .from(gameSets)
+      .orderBy(desc(gameSets.createdAt));
+  }
+
+  async deactivateGameSet(setId: number): Promise<void> {
+    await db
+      .update(gameSets)
+      .set({ isActive: false })
+      .where(eq(gameSets.id, setId));
+  }
 }
 
 export const storage = new DatabaseStorage();
 
-// Create initial admin user if ADMIN_INITIAL_PASSWORD is set
 if (process.env.ADMIN_INITIAL_PASSWORD) {
   const scryptAsync = promisify(scrypt);
 
