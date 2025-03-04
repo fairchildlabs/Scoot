@@ -451,6 +451,7 @@ export default function UserManagementPage() {
   function NewGameSetForm() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const [lastCreatedSetId, setLastCreatedSetId] = useState<number | null>(null);
 
     const form = useForm({
       resolver: zodResolver(insertGameSetSchema),
@@ -470,11 +471,12 @@ export default function UserManagementPage() {
         const res = await apiRequest("POST", "/api/game-sets", data);
         return res.json();
       },
-      onSuccess: () => {
+      onSuccess: (gameSet: any) => { //Type needs to be defined elsewhere
         queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
+        setLastCreatedSetId(gameSet.id);
         toast({
           title: "Success",
-          description: "New game set created",
+          description: `Game Set #${gameSet.id} created successfully`,
         });
         form.reset();
       },
@@ -488,154 +490,160 @@ export default function UserManagementPage() {
     });
 
     return (
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => createGameSetMutation.mutate(data))} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="playersPerTeam"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Players Per Team</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={5}
-                    {...field}
-                    onChange={e => field.onChange(parseInt(e.target.value))}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+      <div className="space-y-6">
+        {lastCreatedSetId && (
+          <div className="p-4 bg-primary/10 rounded-lg">
+            <p className="text-lg font-semibold">Last Created: Game Set #{lastCreatedSetId}</p>
+          </div>
+        )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => createGameSetMutation.mutate(data))} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="playersPerTeam"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Players Per Team</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={5}
+                      {...field}
+                      onChange={e => field.onChange(parseInt(e.target.value))}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="gym"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Gym</FormLabel>
-                <FormControl>
-                  <select
-                    {...field}
-                    className="w-full p-2 rounded-md border border-input bg-background"
-                  >
-                    {gymOptions.map(gym => (
-                      <option key={gym} value={gym}>{gym}</option>
-                    ))}
-                  </select>
-                </FormControl>
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="gym"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Gym</FormLabel>
+                  <FormControl>
+                    <select
+                      {...field}
+                      className="w-full p-2 rounded-md border border-input bg-background"
+                    >
+                      {gymOptions.map(gym => (
+                        <option key={gym} value={gym}>{gym}</option>
+                      ))}
+                    </select>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="court"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Court</FormLabel>
-                <FormControl>
-                  <select
-                    {...field}
-                    className="w-full p-2 rounded-md border border-input bg-background"
-                  >
-                    {courtOptions.map(court => (
-                      <option key={court} value={court}>{court}</option>
-                    ))}
-                  </select>
-                </FormControl>
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="court"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Court</FormLabel>
+                  <FormControl>
+                    <select
+                      {...field}
+                      className="w-full p-2 rounded-md border border-input bg-background"
+                    >
+                      {courtOptions.map(court => (
+                        <option key={court} value={court}>{court}</option>
+                      ))}
+                    </select>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="maxConsecutiveTeamWins"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Max Consecutive Team Wins</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={1}
-                    {...field}
-                    onChange={e => field.onChange(parseInt(e.target.value))}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="maxConsecutiveTeamWins"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Max Consecutive Team Wins</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={1}
+                      {...field}
+                      onChange={e => field.onChange(parseInt(e.target.value))}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="timeLimit"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Time Limit (minutes)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={5}
-                    max={60}
-                    {...field}
-                    onChange={e => field.onChange(parseInt(e.target.value))}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="timeLimit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Time Limit (minutes)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={5}
+                      max={60}
+                      {...field}
+                      onChange={e => field.onChange(parseInt(e.target.value))}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="winScore"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Win Score</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={1}
-                    {...field}
-                    onChange={e => field.onChange(parseInt(e.target.value))}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="winScore"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Win Score</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={1}
+                      {...field}
+                      onChange={e => field.onChange(parseInt(e.target.value))}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="pointSystem"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Point System</FormLabel>
-                <FormControl>
-                  <select
-                    {...field}
-                    className="w-full p-2 rounded-md border border-input bg-background"
-                  >
-                    {pointSystemOptions.map(system => (
-                      <option key={system} value={system}>{system}</option>
-                    ))}
-                  </select>
-                </FormControl>
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="pointSystem"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Point System</FormLabel>
+                  <FormControl>
+                    <select
+                      {...field}
+                      className="w-full p-2 rounded-md border border-input bg-background"
+                    >
+                      {pointSystemOptions.map(system => (
+                        <option key={system} value={system}>{system}</option>
+                      ))}
+                    </select>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={createGameSetMutation.isPending}
-          >
-            Create Game Set
-          </Button>
-        </form>
-      </Form>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={createGameSetMutation.isPending}
+            >
+              {createGameSetMutation.isPending ? "Creating..." : "Create Game Set"}
+            </Button>
+          </form>
+        </Form>
+      </div>
     );
   }
-
 
 
   return (

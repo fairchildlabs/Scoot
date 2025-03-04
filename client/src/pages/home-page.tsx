@@ -11,7 +11,7 @@ import { type GameSet } from "@shared/schema";
 export default function HomePage() {
   const { user } = useAuth();
 
-  const { data: activeGameSet } = useQuery<GameSet>({
+  const { data: activeGameSet, isLoading: gameSetLoading } = useQuery<GameSet>({
     queryKey: ["/api/game-sets/active"],
     enabled: !!user,
   });
@@ -21,7 +21,7 @@ export default function HomePage() {
     enabled: !!user,
   });
 
-  if (checkinsLoading) {
+  if (checkinsLoading || gameSetLoading) {
     return (
       <div className="min-h-screen bg-black">
         <Header />
