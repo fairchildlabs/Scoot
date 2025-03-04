@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 
-const courtOptions = ['East', 'West'] as const;
+const courtOptions = ['West', 'East'] as const; // Reordered to show West first
 
 export default function NewGamePage() {
   const { user } = useAuth();
@@ -77,7 +77,7 @@ export default function NewGamePage() {
                   >
                     {courtOptions.map((court) => (
                       <div key={court} className="flex items-center space-x-2 bg-secondary rounded-lg p-4 flex-1">
-                        <RadioGroupItem value={court} id={court} />
+                        <RadioGroupItem value={court} id={court} className="text-white border-white" />
                         <Label htmlFor={court} className="font-medium cursor-pointer">{court} Court</Label>
                       </div>
                     ))}
