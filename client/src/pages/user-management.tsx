@@ -466,13 +466,10 @@ export default function UserManagementPage() {
     },
   });
 
-  console.log('Form state:', form.formState);
-
   const createGameSetMutation = useMutation({
     mutationFn: async (data: InsertGameSet) => {
       console.log('Mutation starting with data:', data);
       const res = await apiRequest("POST", "/api/game-sets", data);
-      console.log('API response:', res);
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(errorText);
@@ -500,16 +497,36 @@ export default function UserManagementPage() {
     },
   });
 
-  const handleSubmit = form.handleSubmit(async (data) => {
-    console.log('Form submitted, data:', data);
+  // Direct form submission handler
+  const handleFormSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    console.log('Form submit event triggered');
+
+    const formData = form.getValues();
+    console.log('Current form values:', formData);
+
+    const isValid = await form.trigger();
+    console.log('Form validation result:', isValid);
+
+    if (!isValid) {
+      console.log('Form validation errors:', form.formState.errors);
+      return;
+    }
+
     try {
-      await createGameSetMutation.mutateAsync(data);
+      await createGameSetMutation.mutateAsync(formData);
     } catch (error) {
       console.error('Form submission error:', error);
     }
-  });
+  };
 
-  console.log('Form errors:', form.formState.errors);
+  // Direct button click handler
+  const handleButtonClick = async () => {
+    console.log('Button clicked directly');
+    const formData = form.getValues();
+    console.log('Form data on button click:', formData);
+    form.handleSubmit((data) => createGameSetMutation.mutate(data))();
+  };
 
   return (
     <div className="space-y-6">
@@ -519,7 +536,7 @@ export default function UserManagementPage() {
         </div>
       )}
       <Form {...form}>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleFormSubmit} className="space-y-4">
           <FormField
             control={form.control}
             name="playersPerTeam"
@@ -655,10 +672,10 @@ export default function UserManagementPage() {
           />
 
           <Button
-            type="submit"
+            type="button"
             className="w-full"
             disabled={createGameSetMutation.isPending}
-            onClick={() => console.log('Button clicked')}
+            onClick={handleButtonClick}
           >
             {createGameSetMutation.isPending ? "Creating..." : "Create Game Set"}
           </Button>
