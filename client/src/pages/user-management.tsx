@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, insertGameSetSchema, type InsertGameSet } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -453,7 +453,7 @@ export default function UserManagementPage() {
     const { toast } = useToast();
 
     const form = useForm({
-      resolver: zodResolver(insertGameSetSchema), //Requires insertGameSetSchema definition
+      resolver: zodResolver(insertGameSetSchema),
       defaultValues: {
         playersPerTeam: 4,
         gym: 'fonde',
@@ -466,7 +466,7 @@ export default function UserManagementPage() {
     });
 
     const createGameSetMutation = useMutation({
-      mutationFn: async (data: InsertGameSet) => { //Requires InsertGameSet definition
+      mutationFn: async (data: InsertGameSet) => {
         const res = await apiRequest("POST", "/api/game-sets", data);
         return res.json();
       },
@@ -635,6 +635,7 @@ export default function UserManagementPage() {
       </Form>
     );
   }
+
 
 
   return (
