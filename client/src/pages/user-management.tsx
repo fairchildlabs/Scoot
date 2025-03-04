@@ -286,11 +286,6 @@ export default function UserManagementPage() {
   const [lastCreatedPlayer, setLastCreatedPlayer] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
 
-  // Redirect if not engineer/root
-  if (!user?.isEngineer && !user?.isRoot) {
-    return <Redirect to="/" />;
-  }
-
   const { data: players } = useQuery({
     queryKey: ["/api/users"],
   });
@@ -299,7 +294,10 @@ export default function UserManagementPage() {
     queryKey: ["/api/checkins"],
   });
 
-  // Create a Set of checked-in user IDs for easy lookup
+  if (!user?.isEngineer && !user?.isRoot) {
+    return <Redirect to="/" />;
+  }
+
   const checkedInUserIds = useMemo(() => {
     if (!checkins) return new Set<number>();
     return new Set(checkins.map((checkin: any) => checkin.userId));
