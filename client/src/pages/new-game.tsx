@@ -48,6 +48,13 @@ export default function NewGamePage() {
     );
   }
 
+  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
+  const playersCheckedIn = checkins?.length || 0;
+
+  // Split players into home and away teams
+  const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
+  const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -61,10 +68,12 @@ export default function NewGamePage() {
               <div className="text-center py-4">
                 <p className="text-muted-foreground">No active game set. Please create a game set first.</p>
               </div>
-            ) : checkins.length < 2 ? (
+            ) : playersCheckedIn < playersNeeded ? (
               <div className="text-center py-4">
-                <p className="text-muted-foreground">Not enough players checked in to start a game.</p>
-                <p className="text-sm text-muted-foreground">Minimum 2 players required.</p>
+                <p className="text-destructive font-medium">Not enough players checked in (Currently {playersCheckedIn})</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Need {playersNeeded} players ({activeGameSet.playersPerTeam} per team) to start a game.
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -84,18 +93,41 @@ export default function NewGamePage() {
                   </RadioGroup>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Available Players</h3>
-                  <div className="grid gap-2">
-                    {checkins.map((checkin: any) => (
-                      <div key={checkin.id} className="flex items-center gap-2 p-2 bg-secondary rounded-md">
-                        <span>{checkin.username}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Home Team */}
+                  <Card className="bg-white">
+                    <CardHeader>
+                      <CardTitle className="text-black">Home</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {homePlayers.map((player: any) => (
+                          <div key={player.id} className="p-2 rounded-md bg-gray-100 text-black">
+                            {player.username}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Away Team */}
+                  <Card className="bg-black">
+                    <CardHeader>
+                      <CardTitle className="text-white">Away</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {awayPlayers.map((player: any) => (
+                          <div key={player.id} className="p-2 rounded-md bg-gray-800 text-white">
+                            {player.username}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
-                <Button className="w-full">Create Teams</Button>
+                <Button className="w-full">Create Game</Button>
               </div>
             )}
           </CardContent>
