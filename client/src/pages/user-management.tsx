@@ -325,6 +325,28 @@ export default function UserManagementPage() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Form setup must come before any usage
+  const registerForm = useForm({
+    resolver: zodResolver(insertUserSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      birthYear: new Date().getFullYear(),
+      birthMonth: undefined,
+      birthDay: undefined,
+      isPlayer: true,
+      isBank: false,
+      isBook: false,
+      isEngineer: false,
+      isRoot: false,
+    },
+  });
+
+  // Query hooks
   const { data: players = [] } = useQuery({
     queryKey: ["/api/users"],
     enabled: !!user?.isEngineer || !!user?.isRoot,
@@ -335,6 +357,7 @@ export default function UserManagementPage() {
     enabled: !!user?.isEngineer || !!user?.isRoot,
   });
 
+  // Memoized values
   const checkedInUserIds = useMemo(() => {
     return new Set((checkins || []).map((checkin: any) => checkin.userId));
   }, [checkins]);
@@ -354,17 +377,7 @@ export default function UserManagementPage() {
     });
   }, [sortedPlayers, searchQuery]);
 
-  const onSubmit = async (data: any) => {
-    try {
-      const result = await registerMutation.mutateAsync(data);
-      setLastCreatedPlayer(result.username);
-      registerForm.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    } catch (error) {
-      console.error('Failed to create player:', error);
-    }
-  };
-
+  // Mutations
   const checkinMutation = useMutation({
     mutationFn: async (userId: number) => {
       const res = await apiRequest("POST", "/api/checkins", { userId });
@@ -382,10 +395,24 @@ export default function UserManagementPage() {
     },
   });
 
+  // Event handlers
+  const onSubmit = async (data: any) => {
+    try {
+      const result = await registerMutation.mutateAsync(data);
+      setLastCreatedPlayer(result.username);
+      registerForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    } catch (error) {
+      console.error('Failed to create player:', error);
+    }
+  };
+
+  // Early return for unauthorized access
   if (!user?.isEngineer && !user?.isRoot) {
     return <Redirect to="/" />;
   }
 
+  // Component fragments
   const createFormFields = (
     <>
       <FormField
@@ -414,27 +441,6 @@ export default function UserManagementPage() {
       />
     </>
   );
-
-  const registerForm = useForm({
-    resolver: zodResolver(insertUserSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      birthYear: new Date().getFullYear(),
-      birthMonth: undefined,
-      birthDay: undefined,
-      isPlayer: true,
-      isBank: false,
-      isBook: false,
-      isEngineer: false,
-      isRoot: false,
-    },
-  });
-
 
   return (
     <div className="min-h-screen bg-black">
