@@ -5,9 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ScootLogo } from "@/components/logos/scoot-logo";
+import { format } from "date-fns";
 
 export default function HomePage() {
   const { user } = useAuth();
+
+  const { data: activeGameSet } = useQuery({
+    queryKey: ["/api/game-sets/active"],
+  });
 
   const { data: checkins, isLoading: checkinsLoading } = useQuery({
     queryKey: ["/api/checkins"],
@@ -36,7 +41,21 @@ export default function HomePage() {
           <div className="w-full max-w-2xl">
             <Card>
               <CardHeader>
-                <CardTitle>Current Queue</CardTitle>
+                <CardTitle>
+                  {activeGameSet ? (
+                    <div className="flex flex-col space-y-1">
+                      <span>Game Set #{activeGameSet.id}</span>
+                      <span className="text-sm text-muted-foreground">
+                        Created {format(new Date(activeGameSet.createdAt), 'PPp')}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {activeGameSet.gym} - {activeGameSet.court}
+                      </span>
+                    </div>
+                  ) : (
+                    "Current Queue"
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {checkins?.length ? (
