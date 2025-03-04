@@ -497,35 +497,13 @@ export default function UserManagementPage() {
     },
   });
 
-  // Direct form submission handler
-  const handleFormSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    console.log('Form submit event triggered');
-
-    const formData = form.getValues();
-    console.log('Current form values:', formData);
-
-    const isValid = await form.trigger();
-    console.log('Form validation result:', isValid);
-
-    if (!isValid) {
-      console.log('Form validation errors:', form.formState.errors);
-      return;
-    }
-
+  const onSubmit = async (formData: InsertGameSet) => {
+    console.log('Form submitted with data:', formData);
     try {
       await createGameSetMutation.mutateAsync(formData);
     } catch (error) {
-      console.error('Form submission error:', error);
+      console.error('Error submitting form:', error);
     }
-  };
-
-  // Direct button click handler
-  const handleButtonClick = async () => {
-    console.log('Button clicked directly');
-    const formData = form.getValues();
-    console.log('Form data on button click:', formData);
-    form.handleSubmit((data) => createGameSetMutation.mutate(data))();
   };
 
   return (
@@ -535,8 +513,19 @@ export default function UserManagementPage() {
           <p className="text-lg font-semibold">Last Created: Game Set #{lastCreatedSetId}</p>
         </div>
       )}
+      {Object.keys(form.formState.errors).length > 0 && (
+        <div className="p-4 bg-destructive/10 rounded-lg">
+          <p className="text-sm text-destructive">Please fix the form errors and try again.</p>
+          <pre className="mt-2 text-xs">
+            {JSON.stringify(form.formState.errors, null, 2)}
+          </pre>
+        </div>
+      )}
       <Form {...form}>
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <form 
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
+        >
           <FormField
             control={form.control}
             name="playersPerTeam"
@@ -672,10 +661,9 @@ export default function UserManagementPage() {
           />
 
           <Button
-            type="button"
+            type="submit"
             className="w-full"
             disabled={createGameSetMutation.isPending}
-            onClick={handleButtonClick}
           >
             {createGameSetMutation.isPending ? "Creating..." : "Create Game Set"}
           </Button>
