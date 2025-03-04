@@ -28,9 +28,14 @@ export function Header() {
         {user ? (
           <div className="flex items-center gap-4">
             {(user.isEngineer || user.isRoot) && (
-              <Link href="/users">
-                <Button variant="outline">Manage Players</Button>
-              </Link>
+              <>
+                <Link href="/users">
+                  <Button variant="outline">Manage Players</Button>
+                </Link>
+                <Link href="/new-game">
+                  <Button variant="outline">New Game</Button>
+                </Link>
+              </>
             )}
             <div className="flex items-center gap-2">
               <span className="text-white opacity-70">{user.username}</span>
