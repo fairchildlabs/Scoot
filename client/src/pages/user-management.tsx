@@ -281,45 +281,29 @@ function EditUserDialog({ user, open, onClose }: { user: any; open: boolean; onC
 }
 
 export default function UserManagementPage() {
+  // 1. All hooks must be at the top level
   const { user, registerMutation } = useAuth();
   const { toast } = useToast();
   const [lastCreatedPlayer, setLastCreatedPlayer] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
 
-  const { data: players } = useQuery({
+  // 2. useQuery hooks must be called unconditionally
+  const { data: players = [] } = useQuery({
     queryKey: ["/api/users"],
+    enabled: !!user?.isEngineer || !!user?.isRoot, // Use enabled instead of conditional hook
   });
 
-  const { data: checkins } = useQuery({
+  const { data: checkins = [] } = useQuery({
     queryKey: ["/api/checkins"],
+    enabled: !!user?.isEngineer || !!user?.isRoot,
   });
 
-  if (!user?.isEngineer && !user?.isRoot) {
-    return <Redirect to="/" />;
-  }
-
+  // 3. useMemo must also be called unconditionally
   const checkedInUserIds = useMemo(() => {
-    if (!checkins) return new Set<number>();
-    return new Set(checkins.map((checkin: any) => checkin.userId));
+    return new Set((checkins || []).map((checkin: any) => checkin.userId));
   }, [checkins]);
 
-  const checkinMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await apiRequest("POST", "/api/checkins", { userId });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Check-in failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
+  // 4. Form setup must be done unconditionally
   const registerForm = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
@@ -340,6 +324,7 @@ export default function UserManagementPage() {
     },
   });
 
+  // 5. Setup handlers before any conditional returns
   const onSubmit = async (data: any) => {
     try {
       const result = await registerMutation.mutateAsync(data);
@@ -350,6 +335,28 @@ export default function UserManagementPage() {
       console.error('Failed to create player:', error);
     }
   };
+
+  const checkinMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("POST", "/api/checkins", { userId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Check-in failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // 6. Only after all hooks are setup, we can have conditional returns
+  if (!user?.isEngineer && !user?.isRoot) {
+    return <Redirect to="/" />;
+  }
 
   const createFormFields = (
     <>
