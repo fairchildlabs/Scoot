@@ -19,6 +19,44 @@ import { useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import * as z from 'zod';
+import { CaretSortIcon, ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
+
+type SortDirection = "asc" | "desc";
+type SortConfig = {
+  key: string;
+  direction: SortDirection;
+};
+
+function useSortableData(items: any[], config: SortConfig | null = null) {
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(config);
+
+  const sortedItems = useMemo(() => {
+    if (!items || !sortConfig) return items;
+
+    return [...items].sort((a, b) => {
+      const aValue = (a[sortConfig.key] || '').toString().toLowerCase();
+      const bValue = (b[sortConfig.key] || '').toString().toLowerCase();
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [items, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction: SortDirection = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  return { items: sortedItems, requestSort, sortConfig };
+}
 
 function EditUserDialog({ user, open, onClose }: { user: any; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
@@ -281,16 +319,15 @@ function EditUserDialog({ user, open, onClose }: { user: any; open: boolean; onC
 }
 
 export default function UserManagementPage() {
-  // 1. All hooks must be at the top level
   const { user, registerMutation } = useAuth();
   const { toast } = useToast();
   const [lastCreatedPlayer, setLastCreatedPlayer] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // 2. useQuery hooks must be called unconditionally
   const { data: players = [] } = useQuery({
     queryKey: ["/api/users"],
-    enabled: !!user?.isEngineer || !!user?.isRoot, // Use enabled instead of conditional hook
+    enabled: !!user?.isEngineer || !!user?.isRoot,
   });
 
   const { data: checkins = [] } = useQuery({
@@ -298,33 +335,25 @@ export default function UserManagementPage() {
     enabled: !!user?.isEngineer || !!user?.isRoot,
   });
 
-  // 3. useMemo must also be called unconditionally
   const checkedInUserIds = useMemo(() => {
     return new Set((checkins || []).map((checkin: any) => checkin.userId));
   }, [checkins]);
 
-  // 4. Form setup must be done unconditionally
-  const registerForm = useForm({
-    resolver: zodResolver(insertUserSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      birthYear: new Date().getFullYear(),
-      birthMonth: undefined,
-      birthDay: undefined,
-      isPlayer: true,
-      isBank: false,
-      isBook: false,
-      isEngineer: false,
-      isRoot: false,
-    },
-  });
+  const { items: sortedPlayers, requestSort, sortConfig } = useSortableData(players);
 
-  // 5. Setup handlers before any conditional returns
+  const filteredPlayers = useMemo(() => {
+    if (!searchQuery.trim()) return sortedPlayers;
+
+    const query = searchQuery.toLowerCase();
+    return sortedPlayers.filter((player: any) => {
+      return (
+        player.username.toLowerCase().includes(query) ||
+        (player.firstName?.toLowerCase() || '').includes(query) ||
+        (player.lastName?.toLowerCase() || '').includes(query)
+      );
+    });
+  }, [sortedPlayers, searchQuery]);
+
   const onSubmit = async (data: any) => {
     try {
       const result = await registerMutation.mutateAsync(data);
@@ -353,7 +382,6 @@ export default function UserManagementPage() {
     },
   });
 
-  // 6. Only after all hooks are setup, we can have conditional returns
   if (!user?.isEngineer && !user?.isRoot) {
     return <Redirect to="/" />;
   }
@@ -386,6 +414,26 @@ export default function UserManagementPage() {
       />
     </>
   );
+
+  const registerForm = useForm({
+    resolver: zodResolver(insertUserSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      birthYear: new Date().getFullYear(),
+      birthMonth: undefined,
+      birthDay: undefined,
+      isPlayer: true,
+      isBank: false,
+      isBook: false,
+      isEngineer: false,
+      isRoot: false,
+    },
+  });
 
 
   return (
@@ -444,44 +492,95 @@ export default function UserManagementPage() {
               </TabsContent>
 
               <TabsContent value="list">
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Username</TableHead>
-                        <TableHead>Birth Year</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {players?.map((player: any) => (
-                        <TableRow key={player.id}>
-                          <TableCell>{player.username}</TableCell>
-                          <TableCell>{player.birthYear}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant={checkedInUserIds.has(player.id) ? "secondary" : "outline"}
-                                size="sm"
-                                onClick={() => checkinMutation.mutate(player.id)}
-                                disabled={checkinMutation.isPending}
-                                className={checkedInUserIds.has(player.id) ? "bg-white hover:bg-white/90 text-black" : ""}
-                              >
-                                {checkedInUserIds.has(player.id) ? "Check Out" : "Check In"}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditingUser(player)}
-                              >
-                                Edit
-                              </Button>
+                <div className="space-y-4">
+                  <Input
+                    placeholder="Search by username, first name, or last name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-sm"
+                  />
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead onClick={() => requestSort('username')} className="cursor-pointer">
+                            <div className="flex items-center">
+                              Username
+                              {sortConfig?.key === 'username' && (
+                                sortConfig.direction === 'asc' ? <ChevronUpIcon className="ml-1" /> : <ChevronDownIcon className="ml-1" />
+                              )}
+                              {!sortConfig?.key && <CaretSortIcon className="ml-1" />}
                             </div>
-                          </TableCell>
+                          </TableHead>
+                          <TableHead onClick={() => requestSort('firstName')} className="cursor-pointer">
+                            <div className="flex items-center">
+                              First Name
+                              {sortConfig?.key === 'firstName' && (
+                                sortConfig.direction === 'asc' ? <ChevronUpIcon className="ml-1" /> : <ChevronDownIcon className="ml-1" />
+                              )}
+                              {!sortConfig?.key && <CaretSortIcon className="ml-1" />}
+                            </div>
+                          </TableHead>
+                          <TableHead onClick={() => requestSort('lastName')} className="cursor-pointer">
+                            <div className="flex items-center">
+                              Last Name
+                              {sortConfig?.key === 'lastName' && (
+                                sortConfig.direction === 'asc' ? <ChevronUpIcon className="ml-1" /> : <ChevronDownIcon className="ml-1" />
+                              )}
+                              {!sortConfig?.key && <CaretSortIcon className="ml-1" />}
+                            </div>
+                          </TableHead>
+                          <TableHead onClick={() => requestSort('birthYear')} className="cursor-pointer">
+                            <div className="flex items-center">
+                              Birth Year
+                              {sortConfig?.key === 'birthYear' && (
+                                sortConfig.direction === 'asc' ? <ChevronUpIcon className="ml-1" /> : <ChevronDownIcon className="ml-1" />
+                              )}
+                              {!sortConfig?.key && <CaretSortIcon className="ml-1" />}
+                            </div>
+                          </TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredPlayers?.map((player: any) => (
+                          <TableRow key={player.id}>
+                            <TableCell>{player.username}</TableCell>
+                            <TableCell>{player.firstName || '-'}</TableCell>
+                            <TableCell>{player.lastName || '-'}</TableCell>
+                            <TableCell>{player.birthYear}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant={checkedInUserIds.has(player.id) ? "secondary" : "outline"}
+                                  size="sm"
+                                  onClick={() => checkinMutation.mutate(player.id)}
+                                  disabled={checkinMutation.isPending}
+                                  className={checkedInUserIds.has(player.id) ? "bg-white hover:bg-white/90 text-black" : ""}
+                                >
+                                  {checkedInUserIds.has(player.id) ? "Check Out" : "Check In"}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setEditingUser(player)}
+                                >
+                                  Edit
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!filteredPlayers || filteredPlayers.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground">
+                              No players found
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </TabsContent>
 
