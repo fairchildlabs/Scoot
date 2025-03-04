@@ -1,6 +1,6 @@
+import { useAuth } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -13,10 +13,12 @@ export default function HomePage() {
 
   const { data: activeGameSet } = useQuery<GameSet>({
     queryKey: ["/api/game-sets/active"],
+    enabled: !!user,
   });
 
-  const { data: checkins, isLoading: checkinsLoading } = useQuery({
+  const { data: checkins = [], isLoading: checkinsLoading } = useQuery({
     queryKey: ["/api/checkins"],
+    enabled: !!user,
   });
 
   if (checkinsLoading) {
