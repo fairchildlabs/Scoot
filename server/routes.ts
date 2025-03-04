@@ -79,18 +79,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/game-sets", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    if (!req.user!.isEngineer) return res.sendStatus(403);
+    console.log('POST /api/game-sets - Request received');
+    if (!req.isAuthenticated()) {
+      console.log('POST /api/game-sets - Unauthorized');
+      return res.sendStatus(401);
+    }
+    if (!req.user!.isEngineer) {
+      console.log('POST /api/game-sets - Forbidden');
+      return res.sendStatus(403);
+    }
 
     try {
-      console.log('Received game set data:', req.body);
+      console.log('POST /api/game-sets - Request body:', req.body);
       const validatedData = insertGameSetSchema.parse(req.body);
-      console.log('Validated game set data:', validatedData);
+      console.log('POST /api/game-sets - Validated data:', validatedData);
       const gameSet = await storage.createGameSet(req.user!.id, validatedData);
-      console.log('Created game set:', gameSet);
+      console.log('POST /api/game-sets - Created game set:', gameSet);
       res.json(gameSet);
     } catch (error) {
-      console.error('Error creating game set:', error);
+      console.error('POST /api/game-sets - Error:', error);
       res.status(400).json({ error: error.message });
     }
   });
