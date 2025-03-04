@@ -47,18 +47,20 @@ export const gamePlayers = pgTable("game_players", {
 });
 
 // Define schemas after all tables are defined
-export const insertUserSchema = createInsertSchema(users, {
+const userBaseSchema = createInsertSchema(users);
+
+export const insertUserSchema = userBaseSchema.extend({
   username: z.string()
     .min(1, "Username is required")
     .transform(val => val.toLowerCase()), // Convert username to lowercase
   password: z.string().min(1, "Password is required"),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  email: z.string().nullish().optional(),
+  phone: z.string().nullish().optional(),
+  firstName: z.string().nullish().optional(),
+  lastName: z.string().nullish().optional(),
   birthYear: z.number().min(1900).max(new Date().getFullYear()),
-  birthMonth: z.number().min(1).max(12).optional(),
-  birthDay: z.number().min(1).max(31).optional(),
+  birthMonth: z.number().min(1).max(12).nullish().optional(),
+  birthDay: z.number().min(1).max(31).nullish().optional(),
   isPlayer: z.boolean().default(true),
   isBank: z.boolean().default(false),
   isBook: z.boolean().default(false),
