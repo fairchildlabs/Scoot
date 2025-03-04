@@ -47,28 +47,23 @@ export const gamePlayers = pgTable("game_players", {
 });
 
 // Define schemas after all tables are defined
-export const insertUserSchema = createInsertSchema(users)
-.extend({
-  // Required fields
-  username: z.string().min(1, "Username is required"),
+export const insertUserSchema = createInsertSchema(users, {
+  username: z.string()
+    .min(1, "Username is required")
+    .transform(val => val.toLowerCase()), // Convert username to lowercase
   password: z.string().min(1, "Password is required"),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   birthYear: z.number().min(1900).max(new Date().getFullYear()),
-
-  // Optional fields with proper validation
-  email: z.string()
-    .transform(str => str === '' ? null : str)
-    .nullable()
-    .refine(val => val === null || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
-      message: "Invalid email format",
-      skipNull: true,
-    }),
-  phone: z.string()
-    .transform(str => str === '' ? null : str)
-    .nullable(),
-  birthMonth: z.number().min(1).max(12).optional().nullable(),
-  birthDay: z.number().min(1).max(31).optional().nullable(),
-  firstName: z.string().optional().nullable(),
-  lastName: z.string().optional().nullable(),
+  birthMonth: z.number().min(1).max(12).optional(),
+  birthDay: z.number().min(1).max(31).optional(),
+  isPlayer: z.boolean().default(true),
+  isBank: z.boolean().default(false),
+  isBook: z.boolean().default(false),
+  isEngineer: z.boolean().default(false),
+  isRoot: z.boolean().default(false),
 });
 
 export const insertGameSchema = createInsertSchema(games);
