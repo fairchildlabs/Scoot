@@ -73,12 +73,12 @@ export default function NewGamePage() {
                   <RadioGroup
                     value={selectedCourt}
                     onValueChange={(value) => setSelectedCourt(value as typeof courtOptions[number])}
-                    className="grid grid-cols-2 gap-4"
+                    className="flex space-x-4"
                   >
                     {courtOptions.map((court) => (
-                      <div key={court} className="flex items-center space-x-2">
+                      <div key={court} className="flex items-center space-x-2 bg-secondary rounded-lg p-4 flex-1">
                         <RadioGroupItem value={court} id={court} />
-                        <Label htmlFor={court}>{court}</Label>
+                        <Label htmlFor={court} className="font-medium cursor-pointer">{court} Court</Label>
                       </div>
                     ))}
                   </RadioGroup>
