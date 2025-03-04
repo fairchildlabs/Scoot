@@ -29,6 +29,7 @@ function EditUserDialog({ user, open, onClose }: { user: any; open: boolean; onC
         .omit({ password: true })
         .extend({
           email: z.string().email().optional().nullable(),
+          phone: z.string().optional().nullable(),
           birthMonth: z.number().min(1).max(12).optional().nullable(),
           birthDay: z.number().min(1).max(31).optional().nullable(),
         })
