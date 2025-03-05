@@ -85,12 +85,12 @@ export const insertUserSchema = userBaseSchema.extend({
 
 export const insertGameSetSchema = createInsertSchema(gameSets, {
   playersPerTeam: z.number().min(1).max(5),
-  gym: z.enum(['fonde']), 
+  gym: z.enum(['fonde']),
   maxConsecutiveTeamWins: z.number().min(1),
   timeLimit: z.number().min(5).max(60),
   winScore: z.number().min(1),
   pointSystem: z.enum(['1s only', '2s only', '2s and 3s']),
-}).omit({ 
+}).omit({
   id: true,
   createdAt: true,
   isActive: true,

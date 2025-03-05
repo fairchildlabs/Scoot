@@ -48,6 +48,7 @@ export default function NewGamePage() {
         }));
 
       const res = await apiRequest("POST", "/api/games", {
+        setId: activeGameSet!.id,
         players,
         court: selectedCourt
       });
@@ -116,13 +117,13 @@ export default function NewGamePage() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Select Court</h3>
                   <div className="flex items-center justify-center gap-4 bg-white rounded-lg p-4">
-                    <Label>West Court</Label>
+                    <Label className="text-black">West Court</Label>
                     <Switch
                       checked={selectedCourt === 'East'}
                       onCheckedChange={(checked) => setSelectedCourt(checked ? 'East' : 'West')}
                       className="data-[state=checked]:bg-black data-[state=unchecked]:bg-black"
                     />
-                    <Label>East Court</Label>
+                    <Label className="text-black">East Court</Label>
                   </div>
                 </div>
 
