@@ -51,6 +51,7 @@ export default function NewGamePage() {
         court: selectedCourt,
       };
 
+      console.log('Creating game with data:', gameData);
       const gameRes = await apiRequest("POST", "/api/games", gameData);
 
       if (!gameRes.ok) {
@@ -59,6 +60,7 @@ export default function NewGamePage() {
       }
 
       const game = await gameRes.json();
+      console.log('Game created:', game);
 
       // Then add players to the game
       const players = checkins
@@ -69,6 +71,7 @@ export default function NewGamePage() {
           team: index < activeGameSet.playersPerTeam ? 1 : 2
         }));
 
+      console.log('Adding players:', players);
       const playersRes = await apiRequest("POST", "/api/game-players", {
         players
       });
@@ -89,6 +92,7 @@ export default function NewGamePage() {
       setLocation("/"); // Redirect to home page
     },
     onError: (error: Error) => {
+      console.error('Game creation failed:', error);
       toast({
         title: "Failed to create game",
         description: error.message,
