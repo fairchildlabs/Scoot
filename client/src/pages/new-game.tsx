@@ -39,7 +39,9 @@ export default function NewGamePage() {
 
   const createGameMutation = useMutation({
     mutationFn: async () => {
-      if (!activeGameSet) throw new Error("No active game set");
+      if (!activeGameSet?.id) {
+        throw new Error("No active game set available");
+      }
 
       // First create the game
       const gameRes = await apiRequest("POST", "/api/games", {
@@ -92,13 +94,6 @@ export default function NewGamePage() {
     }
   });
 
-  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
-  const playersCheckedIn = checkins?.length || 0;
-
-  // Split players into home and away teams
-  const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
-  const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
-
   if (checkinsLoading || gameSetLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -112,6 +107,13 @@ export default function NewGamePage() {
       </div>
     );
   }
+
+  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
+  const playersCheckedIn = checkins?.length || 0;
+
+  // Split players into home and away teams
+  const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
+  const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
 
   return (
     <div className="min-h-screen bg-background">
