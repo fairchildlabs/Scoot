@@ -18,6 +18,7 @@ export default function NewGamePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [selectedCourt, setSelectedCourt] = useState<typeof courtOptions[number]>('West');
 
   // Only allow engineers and root users
   if (!user?.isEngineer && !user?.isRoot) {
@@ -35,8 +36,6 @@ export default function NewGamePage() {
     queryKey: ["/api/checkins"],
     enabled: !!user,
   });
-
-  const [selectedCourt, setSelectedCourt] = useState<typeof courtOptions[number]>('West');
 
   const createGameMutation = useMutation({
     mutationFn: async () => {
@@ -99,6 +98,20 @@ export default function NewGamePage() {
   // Split players into home and away teams
   const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
   const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
+
+  if (checkinsLoading || gameSetLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

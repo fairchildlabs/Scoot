@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ScootLogo } from "@/components/logos/scoot-logo";
 import { format } from "date-fns";
-import { type GameSet } from "@shared/schema";
+import { type GameSet, type Game } from "@shared/schema";
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -21,7 +21,7 @@ export default function HomePage() {
     enabled: !!user,
   });
 
-  const { data: activeGames = [], isLoading: gamesLoading } = useQuery({
+  const { data: activeGames = [], isLoading: gamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games/active"],
     enabled: !!user,
   });
@@ -54,7 +54,7 @@ export default function HomePage() {
                   <CardTitle>Active Games</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {activeGames.map((game: any) => (
+                  {activeGames.map((game: Game) => (
                     <Card key={game.id} className="bg-secondary">
                       <CardHeader>
                         <CardTitle className="text-lg">
@@ -70,7 +70,7 @@ export default function HomePage() {
                             <h4 className="font-medium mb-2">Home</h4>
                             <div className="space-y-1">
                               {game.players
-                                .filter((p: any) => p.team === 1)
+                                ?.filter((p: any) => p.team === 1)
                                 .map((p: any) => (
                                   <div key={p.id} className="text-sm">
                                     {p.username}
@@ -82,7 +82,7 @@ export default function HomePage() {
                             <h4 className="font-medium mb-2">Away</h4>
                             <div className="space-y-1">
                               {game.players
-                                .filter((p: any) => p.team === 2)
+                                ?.filter((p: any) => p.team === 2)
                                 .map((p: any) => (
                                   <div key={p.id} className="text-sm">
                                     {p.username}
