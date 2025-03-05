@@ -12,7 +12,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
-const courtOptions = ['West', 'East'] as const; // Reordered to show West first
+const courtOptions = ['West', 'East'] as const;
 
 export default function NewGamePage() {
   const { user } = useAuth();
@@ -40,18 +40,27 @@ export default function NewGamePage() {
 
   const createGameMutation = useMutation({
     mutationFn: async () => {
+      if (!activeGameSet) throw new Error("No active game set");
+
       const players = checkins
-        .slice(0, activeGameSet!.playersPerTeam * 2)
+        .slice(0, activeGameSet.playersPerTeam * 2)
         .map((checkin: any, index: number) => ({
           userId: checkin.userId,
-          team: index < activeGameSet!.playersPerTeam ? 1 : 2
+          team: index < activeGameSet.playersPerTeam ? 1 : 2
         }));
 
       const res = await apiRequest("POST", "/api/games", {
-        setId: activeGameSet!.id,
+        setId: activeGameSet.id,
+        startTime: new Date().toISOString(),
         players,
         court: selectedCourt
       });
+
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error);
+      }
+
       return res.json();
     },
     onSuccess: () => {
@@ -121,7 +130,7 @@ export default function NewGamePage() {
                     <Switch
                       checked={selectedCourt === 'East'}
                       onCheckedChange={(checked) => setSelectedCourt(checked ? 'East' : 'West')}
-                      className="data-[state=checked]:bg-black data-[state=unchecked]:bg-black"
+                      className="data-[state=checked]:bg-black data-[state=unchecked]:bg-black [&>span]:bg-white [&>span]:border-2 [&>span]:border-black"
                     />
                     <Label className="text-black">East Court</Label>
                   </div>
