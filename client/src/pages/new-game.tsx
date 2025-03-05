@@ -30,6 +30,12 @@ export default function NewGamePage() {
   const { data: activeGameSet, isLoading: gameSetLoading } = useQuery({
     queryKey: ["/api/game-sets/active"],
     enabled: !!user,
+    onSuccess: (data) => {
+      console.log('Received active game set:', data);
+    },
+    onError: (error) => {
+      console.error('Failed to fetch active game set:', error);
+    }
   });
 
   // Get checked-in players
