@@ -97,7 +97,19 @@ export const insertGameSetSchema = createInsertSchema(gameSets, {
   createdBy: true  // Explicitly omit createdBy as it's set by the server
 });
 
-export const insertGameSchema = createInsertSchema(games);
+// Add insertGameSchema with proper field validations
+export const insertGameSchema = createInsertSchema(games, {
+  setId: z.number(),
+  startTime: z.string(),
+  court: z.enum(['East', 'West']),
+}).omit({
+  id: true,
+  endTime: true,
+  team1Score: true,
+  team2Score: true,
+  clubIndex: true,
+});
+
 export const insertCheckinSchema = createInsertSchema(checkins);
 export const insertGamePlayerSchema = createInsertSchema(gamePlayers);
 
@@ -109,3 +121,4 @@ export type Checkin = typeof checkins.$inferSelect;
 export type GamePlayer = typeof gamePlayers.$inferSelect;
 export type GameSet = typeof gameSets.$inferSelect;
 export type InsertGameSet = z.infer<typeof insertGameSetSchema>;
+export type InsertGame = z.infer<typeof insertGameSchema>;

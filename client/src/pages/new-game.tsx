@@ -42,26 +42,39 @@ export default function NewGamePage() {
     mutationFn: async () => {
       if (!activeGameSet) throw new Error("No active game set");
 
+      // First create the game
+      const gameRes = await apiRequest("POST", "/api/games", {
+        setId: activeGameSet.id,
+        startTime: new Date().toISOString(),
+        court: selectedCourt,
+      });
+
+      if (!gameRes.ok) {
+        const error = await gameRes.text();
+        throw new Error(error);
+      }
+
+      const game = await gameRes.json();
+
+      // Then add players to the game
       const players = checkins
         .slice(0, activeGameSet.playersPerTeam * 2)
         .map((checkin: any, index: number) => ({
+          gameId: game.id,
           userId: checkin.userId,
           team: index < activeGameSet.playersPerTeam ? 1 : 2
         }));
 
-      const res = await apiRequest("POST", "/api/games", {
-        setId: activeGameSet.id,
-        startTime: new Date().toISOString(),
-        players,
-        court: selectedCourt
+      const playersRes = await apiRequest("POST", "/api/game-players", {
+        players
       });
 
-      if (!res.ok) {
-        const error = await res.text();
+      if (!playersRes.ok) {
+        const error = await playersRes.text();
         throw new Error(error);
       }
 
-      return res.json();
+      return game;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/games/active"] });
@@ -170,8 +183,8 @@ export default function NewGamePage() {
                   </Card>
                 </div>
 
-                <Button 
-                  className="w-full" 
+                <Button
+                  className="w-full"
                   onClick={() => createGameMutation.mutate()}
                   disabled={createGameMutation.isPending}
                 >
