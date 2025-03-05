@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { type InsertGame } from "@shared/schema";
 
 const courtOptions = ['West', 'East'] as const;
 
@@ -43,12 +44,14 @@ export default function NewGamePage() {
         throw new Error("No active game set available");
       }
 
-      // First create the game
-      const gameRes = await apiRequest("POST", "/api/games", {
+      // First create the game with exact schema match
+      const gameData: InsertGame = {
         setId: activeGameSet.id,
         startTime: new Date().toISOString(),
         court: selectedCourt,
-      });
+      };
+
+      const gameRes = await apiRequest("POST", "/api/games", gameData);
 
       if (!gameRes.ok) {
         const error = await gameRes.text();
