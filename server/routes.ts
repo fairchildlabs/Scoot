@@ -53,15 +53,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.user!.isEngineer) return res.sendStatus(403);
 
-    const { players } = req.body;
-    const game = await storage.createGame(players, 34);
+    try {
+      console.log('POST /api/games - Request body:', req.body);
 
-    // Deactivate checkins for players in the game
-    await Promise.all(players.map((playerId: number) =>
-      storage.deactivateCheckin(playerId)
-    ));
+      if (!req.body.setId) {
+        console.error('POST /api/games - Missing setId in request');
+        return res.status(400).send("Missing setId");
+      }
 
-    res.json(game);
+      const game = await storage.createGame(
+        req.body.setId,
+        req.body.court || 'West'
+      );
+
+      console.log('POST /api/games - Created game:', game);
+      res.json(game);
+    } catch (error) {
+      console.error('POST /api/games - Error:', error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.patch("/api/games/:id/score", async (req, res) => {
