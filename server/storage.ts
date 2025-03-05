@@ -26,7 +26,7 @@ export interface IStorage {
   getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]>;
   createCheckin(userId: number, clubIndex: number): Promise<Checkin>;
   deactivateCheckin(checkinId: number): Promise<void>;
-  createGame(players: number[], clubIndex: number): Promise<Game>;
+  createGame(setId: number, court: string): Promise<Game>;
   updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game>;
   getAllUsers(): Promise<User[]>;
   sessionStore: session.Store;
@@ -112,22 +112,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checkins.id, checkinId));
   }
 
-  async createGame(players: number[], clubIndex: number): Promise<Game> {
+  async createGame(setId: number, court: string): Promise<Game> {
     const [game] = await db
       .insert(games)
       .values({
+        setId,
         startTime: new Date(),
-        clubIndex,
+        clubIndex: 34,
+        court
       })
       .returning();
-
-    const gamePlayerValues = players.map((userId, index) => ({
-      gameId: game.id,
-      userId,
-      team: index < (players.length / 2) ? 1 : 2,
-    }));
-
-    await db.insert(gamePlayers).values(gamePlayerValues);
     return game;
   }
 
