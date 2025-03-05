@@ -44,6 +44,8 @@ export default function NewGamePage() {
         throw new Error("No active game set available");
       }
 
+      console.log('Starting game creation with set:', activeGameSet);
+
       // First create the game with exact schema match
       const gameData: InsertGame = {
         setId: activeGameSet.id,
@@ -53,41 +55,24 @@ export default function NewGamePage() {
 
       console.log('Creating game with data:', gameData);
       const gameRes = await apiRequest("POST", "/api/games", gameData);
+      console.log('Game creation response:', gameRes);
 
       if (!gameRes.ok) {
         const error = await gameRes.text();
+        console.error('Game creation failed:', error);
         throw new Error(error);
       }
 
       const game = await gameRes.json();
       console.log('Game created:', game);
 
-      // Then add players to the game
-      const players = checkins
-        .slice(0, activeGameSet.playersPerTeam * 2)
-        .map((checkin: any, index: number) => ({
-          gameId: game.id,
-          userId: checkin.userId,
-          team: index < activeGameSet.playersPerTeam ? 1 : 2
-        }));
-
-      console.log('Adding players:', players);
-      const playersRes = await apiRequest("POST", "/api/game-players", {
-        players
-      });
-
-      if (!playersRes.ok) {
-        const error = await playersRes.text();
-        throw new Error(error);
-      }
-
       return game;
     },
-    onSuccess: () => {
+    onSuccess: (game) => {
       queryClient.invalidateQueries({ queryKey: ["/api/games/active"] });
       toast({
         title: "Success",
-        description: "Game created successfully"
+        description: `Game #${game.id} created successfully`
       });
       setLocation("/"); // Redirect to home page
     },
