@@ -40,32 +40,36 @@ export default function NewGamePage() {
 
   const createGameMutation = useMutation({
     mutationFn: async () => {
-      if (!activeGameSet?.id) {
+      if (!activeGameSet) {
+        console.error('No active game set found');
         throw new Error("No active game set available");
       }
 
-      console.log('Starting game creation with set:', activeGameSet);
+      console.log('Active game set:', activeGameSet);
 
-      // First create the game with exact schema match
+      if (!activeGameSet.id) {
+        console.error('Game set has no ID');
+        throw new Error("Invalid game set");
+      }
+
       const gameData: InsertGame = {
-        setId: activeGameSet.id,
+        setId: Number(activeGameSet.id),
         startTime: new Date().toISOString(),
         court: selectedCourt,
       };
 
       console.log('Creating game with data:', gameData);
+
       const gameRes = await apiRequest("POST", "/api/games", gameData);
-      console.log('Game creation response:', gameRes);
 
       if (!gameRes.ok) {
-        const error = await gameRes.text();
-        console.error('Game creation failed:', error);
-        throw new Error(error);
+        const errorText = await gameRes.text();
+        console.error('Game creation failed:', errorText);
+        throw new Error(errorText);
       }
 
       const game = await gameRes.json();
-      console.log('Game created:', game);
-
+      console.log('Game created successfully:', game);
       return game;
     },
     onSuccess: (game) => {
@@ -74,7 +78,7 @@ export default function NewGamePage() {
         title: "Success",
         description: `Game #${game.id} created successfully`
       });
-      setLocation("/"); // Redirect to home page
+      setLocation("/");
     },
     onError: (error: Error) => {
       console.error('Game creation failed:', error);
