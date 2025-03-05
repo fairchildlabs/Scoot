@@ -93,20 +93,6 @@ export default function NewGamePage() {
     }
   });
 
-  if (checkinsLoading || gameSetLoading) {
-    return (
-      <div className="min-h-screen bg-black">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-white" />
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
   const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
   const playersCheckedIn = checkins?.length || 0;
 
