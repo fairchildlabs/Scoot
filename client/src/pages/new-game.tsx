@@ -2,18 +2,22 @@ import { useAuth } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const courtOptions = ['West', 'East'] as const; // Reordered to show West first
 
 export default function NewGamePage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   // Only allow engineers and root users
   if (!user?.isEngineer && !user?.isRoot) {
@@ -33,6 +37,38 @@ export default function NewGamePage() {
   });
 
   const [selectedCourt, setSelectedCourt] = useState<typeof courtOptions[number]>('West');
+
+  const createGameMutation = useMutation({
+    mutationFn: async () => {
+      const players = checkins
+        .slice(0, activeGameSet!.playersPerTeam * 2)
+        .map((checkin: any, index: number) => ({
+          userId: checkin.userId,
+          team: index < activeGameSet!.playersPerTeam ? 1 : 2
+        }));
+
+      const res = await apiRequest("POST", "/api/games", {
+        players,
+        court: selectedCourt
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/games/active"] });
+      toast({
+        title: "Success",
+        description: "Game created successfully"
+      });
+      setLocation("/"); // Redirect to home page
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create game",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
 
   if (checkinsLoading || gameSetLoading) {
     return (
@@ -79,11 +115,12 @@ export default function NewGamePage() {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Select Court</h3>
-                  <div className="flex items-center justify-center gap-4 bg-secondary rounded-lg p-4">
+                  <div className="flex items-center justify-center gap-4 bg-white rounded-lg p-4">
                     <Label>West Court</Label>
                     <Switch
                       checked={selectedCourt === 'East'}
                       onCheckedChange={(checked) => setSelectedCourt(checked ? 'East' : 'West')}
+                      className="data-[state=checked]:bg-black data-[state=unchecked]:bg-black"
                     />
                     <Label>East Court</Label>
                   </div>
@@ -123,7 +160,13 @@ export default function NewGamePage() {
                   </Card>
                 </div>
 
-                <Button className="w-full">Create Game</Button>
+                <Button 
+                  className="w-full" 
+                  onClick={() => createGameMutation.mutate()}
+                  disabled={createGameMutation.isPending}
+                >
+                  {createGameMutation.isPending ? "Creating..." : "Create Game"}
+                </Button>
               </div>
             )}
           </CardContent>
