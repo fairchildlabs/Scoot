@@ -21,7 +21,12 @@ export default function HomePage() {
     enabled: !!user,
   });
 
-  if (checkinsLoading || gameSetLoading) {
+  const { data: activeGames = [], isLoading: gamesLoading } = useQuery({
+    queryKey: ["/api/games/active"],
+    enabled: !!user,
+  });
+
+  if (checkinsLoading || gameSetLoading || gamesLoading) {
     return (
       <div className="min-h-screen bg-black">
         <Header />
@@ -41,7 +46,59 @@ export default function HomePage() {
       <main className="container mx-auto py-10 px-4">
         <div className="flex flex-col items-center justify-center space-y-4">
           <ScootLogo className="h-24 w-24 text-primary" />
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-2xl space-y-4">
+            {/* Active Games */}
+            {activeGames.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Active Games</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {activeGames.map((game: any) => (
+                    <Card key={game.id} className="bg-secondary">
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          Game #{game.id} - {game.court} Court
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Started {format(new Date(game.startTime), 'h:mm a')}
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="font-medium mb-2">Home</h4>
+                            <div className="space-y-1">
+                              {game.players
+                                .filter((p: any) => p.team === 1)
+                                .map((p: any) => (
+                                  <div key={p.id} className="text-sm">
+                                    {p.username}
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-medium mb-2">Away</h4>
+                            <div className="space-y-1">
+                              {game.players
+                                .filter((p: any) => p.team === 2)
+                                .map((p: any) => (
+                                  <div key={p.id} className="text-sm">
+                                    {p.username}
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Game Set Info */}
             <Card>
               <CardHeader>
                 <CardTitle>
@@ -52,7 +109,7 @@ export default function HomePage() {
                         Created {format(new Date(activeGameSet.createdAt), 'PPp')}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {activeGameSet.gym} - {activeGameSet.court}
+                        {activeGameSet.gym} - {activeGameSet.playersPerTeam} players per team
                       </span>
                     </div>
                   ) : (

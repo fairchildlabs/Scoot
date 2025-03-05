@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Redirect } from "wouter";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 
@@ -79,30 +79,26 @@ export default function NewGamePage() {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Select Court</h3>
-                  <RadioGroup
-                    value={selectedCourt}
-                    onValueChange={(value) => setSelectedCourt(value as typeof courtOptions[number])}
-                    className="flex space-x-4"
-                  >
-                    {courtOptions.map((court) => (
-                      <div key={court} className="flex items-center space-x-2 bg-secondary rounded-lg p-4 flex-1">
-                        <RadioGroupItem value={court} id={court} className="text-white border-white" />
-                        <Label htmlFor={court} className="font-medium cursor-pointer">{court} Court</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                  <div className="flex items-center justify-center gap-4 bg-secondary rounded-lg p-4">
+                    <Label>West Court</Label>
+                    <Switch
+                      checked={selectedCourt === 'East'}
+                      onCheckedChange={(checked) => setSelectedCourt(checked ? 'East' : 'West')}
+                    />
+                    <Label>East Court</Label>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   {/* Home Team */}
-                  <Card className="bg-white">
+                  <Card className="bg-black/20 border border-white">
                     <CardHeader>
-                      <CardTitle className="text-black">Home</CardTitle>
+                      <CardTitle className="text-white">Home</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
                         {homePlayers.map((player: any) => (
-                          <div key={player.id} className="p-2 rounded-md bg-gray-100 text-black">
+                          <div key={player.id} className="p-2 rounded-md bg-white text-black">
                             {player.username}
                           </div>
                         ))}
@@ -111,14 +107,14 @@ export default function NewGamePage() {
                   </Card>
 
                   {/* Away Team */}
-                  <Card className="bg-black">
+                  <Card className="bg-black/20 border border-white">
                     <CardHeader>
                       <CardTitle className="text-white">Away</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
                         {awayPlayers.map((player: any) => (
-                          <div key={player.id} className="p-2 rounded-md bg-gray-800 text-white">
+                          <div key={player.id} className="p-2 rounded-md bg-black text-white border border-white">
                             {player.username}
                           </div>
                         ))}
