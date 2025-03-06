@@ -140,7 +140,7 @@ export default function NewGamePage() {
   // Player Card Component
   const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
     <div className={`flex items-center justify-between p-2 rounded-md ${
-      isNextUp ? 'bg-secondary/50 text-white' : 
+      isNextUp ? 'bg-secondary/30 text-white' : 
       isAway ? 'bg-black text-white border border-white' : 
       'bg-white text-black'
     }`}>
@@ -152,7 +152,7 @@ export default function NewGamePage() {
         <Button
           size="icon"
           variant="outline"
-          className={`rounded-full h-8 w-8 ${isAway || isNextUp ? 'border-white text-white hover:text-white' : ''}`}
+          className={`rounded-full h-8 w-8 ${isNextUp ? 'border-white text-white hover:text-white' : 'border-black text-black hover:text-black'}`}
           onClick={() => checkoutMutation.mutate(player.id)}
         >
           <X className="h-4 w-4" />
@@ -160,7 +160,7 @@ export default function NewGamePage() {
         <Button
           size="icon"
           variant="outline"
-          className={`rounded-full h-8 w-8 ${isAway || isNextUp ? 'border-white text-white hover:text-white' : ''}`}
+          className={`rounded-full h-8 w-8 ${isNextUp ? 'border-white text-white hover:text-white' : 'border-black text-black hover:text-black'}`}
           onClick={() => bumpMutation.mutate(player.id)}
         >
           <HandMetal className="h-4 w-4" />
