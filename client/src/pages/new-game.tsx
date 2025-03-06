@@ -74,7 +74,6 @@ export default function NewGamePage() {
     }
   });
 
-  // Mutations for player actions
   const playerMoveMutation = useMutation({
     mutationFn: async ({ playerId, moveType }: { playerId: number, moveType: string }) => {
       if (!activeGameSet) throw new Error("No active game set");
@@ -109,7 +108,7 @@ export default function NewGamePage() {
     }
   });
 
-  if (checkinsLoading || gameSetLoading) {
+  if (checkinsLoading || gameSetLoading || playerMoveMutation.isPending) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
