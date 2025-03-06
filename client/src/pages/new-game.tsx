@@ -50,14 +50,12 @@ export default function NewGamePage() {
         court: selectedCourt,
       };
 
-      const gameRes = await apiRequest("POST", "/api/games", gameData);
-
-      if (!gameRes.ok) {
-        const errorText = await gameRes.text();
+      const res = await apiRequest("POST", "/api/games", gameData);
+      if (!res.ok) {
+        const errorText = await res.text();
         throw new Error(errorText);
       }
-
-      return await gameRes.json();
+      return await res.json();
     },
     onSuccess: (game) => {
       queryClient.invalidateQueries({ queryKey: ["/api/games/active"] });
@@ -77,29 +75,31 @@ export default function NewGamePage() {
   });
 
   // Mutations for player actions
-  const checkoutMutation = useMutation({
-    mutationFn: async (playerId: number) => {
-      const res = await apiRequest("DELETE", `/api/checkins/${playerId}`);
-      if (!res.ok) throw new Error("Failed to check out player");
-      return playerId;
+  const playerMoveMutation = useMutation({
+    mutationFn: async ({ playerId, moveType }: { playerId: number, moveType: string }) => {
+      if (!activeGameSet) throw new Error("No active game set");
+
+      const res = await apiRequest("POST", "/api/player-move", {
+        playerId,
+        moveType,
+        setId: activeGameSet.id
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText);
+      }
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-    }
-  });
-
-  const bumpMutation = useMutation({
-    mutationFn: async (playerId: number) => {
-      // TODO: Implement bump logic using game population algorithm
-      console.log("Bump player:", playerId);
-    }
-  });
-
-  // Add new swap mutation
-  const swapMutation = useMutation({
-    mutationFn: async (playerId: number) => {
-      // TODO: Implement swap logic using game population algorithm
-      console.log("Swap player:", playerId);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Action failed",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   });
 
@@ -153,7 +153,7 @@ export default function NewGamePage() {
           size="icon"
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => checkoutMutation.mutate(player.id)}
+          onClick={() => playerMoveMutation.mutate({ playerId: player.id, moveType: 'CHECKOUT' })}
         >
           <X className="h-4 w-4" />
         </Button>
@@ -161,7 +161,7 @@ export default function NewGamePage() {
           size="icon"
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => bumpMutation.mutate(player.id)}
+          onClick={() => playerMoveMutation.mutate({ playerId: player.id, moveType: 'BUMP' })}
         >
           <HandMetal className="h-4 w-4" />
         </Button>
@@ -170,7 +170,10 @@ export default function NewGamePage() {
             size="icon"
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-            onClick={() => swapMutation.mutate(player.id)}
+            onClick={() => playerMoveMutation.mutate({
+              playerId: player.id,
+              moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
+            })}
           >
             {isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
           </Button>
@@ -182,7 +185,7 @@ export default function NewGamePage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto py-10 px-4">
+      <main className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
             <CardTitle>Create New Game</CardTitle>

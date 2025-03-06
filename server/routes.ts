@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertGameSetSchema } from "@shared/schema";
-import { populateGame } from "./game-logic/game-population";
+import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -135,6 +135,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     await storage.deactivateGameSet(parseInt(req.params.id));
     res.sendStatus(200);
+  });
+
+  app.post("/api/player-move", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
+
+    const { playerId, moveType, setId } = req.body;
+
+    try {
+      // Get current game state
+      const gameState = await populateGame(setId);
+
+      // Apply the move
+      const result = movePlayer(gameState, playerId, moveType as MoveType);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+
+      // Update storage based on the new state
+      // For now just return the new state - we'll implement storage updates later
+      res.json(result.updatedState);
+    } catch (error: any) {
+      console.error('Player move failed:', error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   const httpServer = createServer(app);
