@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, X, HandMetal } from "lucide-react";
+import { Loader2, X, HandMetal, ArrowLeftRight, ArrowDownAZ } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Redirect, useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
@@ -115,6 +115,14 @@ export default function NewGamePage() {
     }
   });
 
+  // Add new swap mutation
+  const swapMutation = useMutation({
+    mutationFn: async (playerId: number) => {
+      // TODO: Implement swap logic using game population algorithm
+      console.log("Swap player:", playerId);
+    }
+  });
+
   if (checkinsLoading || gameSetLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -152,7 +160,7 @@ export default function NewGamePage() {
         <Button
           size="icon"
           variant="outline"
-          className={`rounded-full h-8 w-8 border-white text-white hover:text-white`}
+          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
           onClick={() => checkoutMutation.mutate(player.id)}
         >
           <X className="h-4 w-4" />
@@ -160,11 +168,21 @@ export default function NewGamePage() {
         <Button
           size="icon"
           variant="outline"
-          className={`rounded-full h-8 w-8 border-white text-white hover:text-white`}
+          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
           onClick={() => bumpMutation.mutate(player.id)}
         >
           <HandMetal className="h-4 w-4" />
         </Button>
+        {!isNextUp && (
+          <Button
+            size="icon"
+            variant="outline"
+            className="rounded-full h-8 w-8 border-white text-white hover:text-white"
+            onClick={() => swapMutation.mutate(player.id)}
+          >
+            {isAway ? <ArrowDownAZ className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
+          </Button>
+        )}
       </div>
     </div>
   );
