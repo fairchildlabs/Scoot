@@ -141,19 +141,17 @@ export default function NewGamePage() {
     }`}>
       <div className="flex items-center gap-4">
         <span className="font-mono text-lg">{index + 1}</span>
-        <div className="flex items-center gap-2">
-          <span>{player.username}</span>
-          {isOG(player.birthYear) && (
-            <span className="font-bold text-primary">OG</span>
-          )}
-        </div>
+        <span>{player.username}</span>
       </div>
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
+        {isOG(player.birthYear) && (
+          <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
+        )}
         <Button
           size="icon"
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => playerMoveMutation.mutate({ playerId: player.id, moveType: 'CHECKOUT' })}
+          onClick={() => playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT' })}
         >
           <X className="h-4 w-4" />
         </Button>
@@ -161,7 +159,7 @@ export default function NewGamePage() {
           size="icon"
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => playerMoveMutation.mutate({ playerId: player.id, moveType: 'BUMP' })}
+          onClick={() => playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP' })}
         >
           <HandMetal className="h-4 w-4" />
         </Button>
@@ -171,7 +169,7 @@ export default function NewGamePage() {
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => playerMoveMutation.mutate({
-              playerId: player.id,
+              playerId: player.userId,
               moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
             })}
           >
