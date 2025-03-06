@@ -196,18 +196,19 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
   }
 
   const isTeamA = playerIndex < teamSize;
-  const position = isTeamA ? playerIndex : playerIndex - teamSize;
-
-  // For team A players, swap with corresponding team B player
-  // For team B players, swap with corresponding team A player
-  const temp = isTeamA ? newState.teamA.players[position] : newState.teamB.players[position];
 
   if (isTeamA) {
-    newState.teamA.players[position] = newState.teamB.players[position];
-    newState.teamB.players[position] = temp;
+    // If in Team A, swap with corresponding Team B player
+    const teamBIndex = playerIndex + teamSize;  // Add teamSize to get to Team B position
+    const temp = newState.teamA.players[playerIndex];
+    newState.teamA.players[playerIndex] = newState.teamB.players[playerIndex];
+    newState.teamB.players[playerIndex] = temp;
   } else {
-    newState.teamB.players[position] = newState.teamA.players[position];
-    newState.teamA.players[position] = temp;
+    // If in Team B, swap with corresponding Team A player
+    const teamAIndex = playerIndex - teamSize;  // Subtract teamSize to get to Team A position
+    const temp = newState.teamB.players[playerIndex - teamSize];
+    newState.teamB.players[playerIndex - teamSize] = newState.teamA.players[teamAIndex];
+    newState.teamA.players[teamAIndex] = temp;
   }
 
   // Update OG counts for both teams
@@ -237,11 +238,11 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   }
 
   const teamBIndex = playerIndex - teamSize;
-  // If at the last position, wrap to the first position
-  // If not at the last position, swap with next player
+
+  // Calculate next index - wrap to start of Team B if at end
   const nextIndex = (teamBIndex === teamSize - 1) ? 0 : teamBIndex + 1;
 
-  // Swap with next player in team B (or wrap to first position)
+  // Swap with next player in team B (or wrap to first Team B player)
   const temp = newState.teamB.players[teamBIndex];
   newState.teamB.players[teamBIndex] = newState.teamB.players[nextIndex];
   newState.teamB.players[nextIndex] = temp;
