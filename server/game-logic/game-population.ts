@@ -196,18 +196,18 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
   }
 
   const isTeamA = playerIndex < teamSize;
-
   if (isTeamA) {
-    // If in Team A, swap with corresponding Team B player at same relative position
+    // For Team A players, swap with corresponding Team B player
+    const teamBPlayerIndex = playerIndex;  // Same relative position in Team B
     const temp = newState.teamA.players[playerIndex];
-    newState.teamA.players[playerIndex] = newState.teamB.players[playerIndex];
-    newState.teamB.players[playerIndex] = temp;
+    newState.teamA.players[playerIndex] = newState.teamB.players[teamBPlayerIndex];
+    newState.teamB.players[teamBPlayerIndex] = temp;
   } else {
-    // If in Team B, swap with corresponding Team A player at same relative position
-    const teamAIndex = playerIndex - teamSize;
-    const temp = newState.teamB.players[teamAIndex];
-    newState.teamB.players[teamAIndex] = newState.teamA.players[teamAIndex];
-    newState.teamA.players[teamAIndex] = temp;
+    // For Team B players, swap with corresponding Team A player
+    const teamAPlayerIndex = playerIndex - teamSize;  // Get relative position in Team A
+    const temp = newState.teamB.players[teamAPlayerIndex];
+    newState.teamB.players[teamAPlayerIndex] = newState.teamA.players[teamAPlayerIndex];
+    newState.teamA.players[teamAPlayerIndex] = temp;
   }
 
   // Update OG counts for both teams
@@ -227,29 +227,27 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   const newState = { ...state };
   const teamSize = state.config.maxPlayersPerTeam;
 
-  // Only allow vertical swaps for team B players
+  // Only allow vertical swaps for Team B players
   if (playerIndex < teamSize || playerIndex >= teamSize * 2) {
     return {
       success: false,
-      message: "Can only swap team B players vertically",
+      message: "Can only swap Team B players vertically",
       updatedState: state
     };
   }
 
+  // Get position within Team B array (0 to teamSize-1)
   const teamBIndex = playerIndex - teamSize;
-  const firstTeamBIndex = 0;
-  const lastTeamBIndex = teamSize - 1;
 
-  // If at the last position in Team B, wrap to first Team B position
-  // Otherwise, swap with next position
-  const nextIndex = teamBIndex === lastTeamBIndex ? firstTeamBIndex : teamBIndex + 1;
+  // Calculate next position, wrapping to start if at end
+  const nextTeamBIndex = teamBIndex === (teamSize - 1) ? 0 : teamBIndex + 1;
 
-  // Swap players within Team B
+  // Perform the swap within Team B only
   const temp = newState.teamB.players[teamBIndex];
-  newState.teamB.players[teamBIndex] = newState.teamB.players[nextIndex];
-  newState.teamB.players[nextIndex] = temp;
+  newState.teamB.players[teamBIndex] = newState.teamB.players[nextTeamBIndex];
+  newState.teamB.players[nextTeamBIndex] = temp;
 
-  // Update OG count for team B
+  // Update OG count for Team B
   newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
 
   return {
