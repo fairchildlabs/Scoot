@@ -232,10 +232,19 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
   });
 
   const newState = JSON.parse(JSON.stringify(state));
-  const isTeamA = playerIndex < teamSize;
-  const relativeIndex = isTeamA ? playerIndex : playerIndex - teamSize;
 
-  // Simple swap at the relative position
+  // Get the relative index (0-4) in both teams
+  const relativeIndex = playerIndex < teamSize ? playerIndex : playerIndex - teamSize;
+
+  console.log('Horizontal Swap - Before swap:', {
+    relativeIndex,
+    playerAName: state.teamA.players[relativeIndex]?.username,
+    playerBName: state.teamB.players[relativeIndex]?.username,
+    displayIndexA: relativeIndex + 1,
+    displayIndexB: relativeIndex + 5
+  });
+
+  // Perform the swap between Team A and Team B at the same relative position
   const temp = newState.teamA.players[relativeIndex];
   newState.teamA.players[relativeIndex] = newState.teamB.players[relativeIndex];
   newState.teamB.players[relativeIndex] = temp;
@@ -291,7 +300,7 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
     nextPlayer: state.teamB.players[nextIndex]?.username
   });
 
-  // Perform the swap
+  // Perform the swap within Team B
   const temp = newState.teamB.players[currentIndex];
   newState.teamB.players[currentIndex] = newState.teamB.players[nextIndex];
   newState.teamB.players[nextIndex] = temp;
