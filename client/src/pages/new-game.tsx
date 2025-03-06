@@ -152,7 +152,7 @@ export default function NewGamePage() {
         <Button
           size="icon"
           variant="outline"
-          className={`rounded-full h-8 w-8 ${isNextUp ? 'border-white text-white hover:text-white' : 'border-black text-black hover:text-black'}`}
+          className={`rounded-full h-8 w-8 border-white text-white hover:text-white`}
           onClick={() => checkoutMutation.mutate(player.id)}
         >
           <X className="h-4 w-4" />
@@ -160,7 +160,7 @@ export default function NewGamePage() {
         <Button
           size="icon"
           variant="outline"
-          className={`rounded-full h-8 w-8 ${isNextUp ? 'border-white text-white hover:text-white' : 'border-black text-black hover:text-black'}`}
+          className={`rounded-full h-8 w-8 border-white text-white hover:text-white`}
           onClick={() => bumpMutation.mutate(player.id)}
         >
           <HandMetal className="h-4 w-4" />
