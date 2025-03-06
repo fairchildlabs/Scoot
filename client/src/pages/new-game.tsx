@@ -92,7 +92,12 @@ export default function NewGamePage() {
       return await res.json();
     },
     onSuccess: () => {
+      // Invalidate the checkins query to refresh the UI
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      toast({
+        title: "Success",
+        description: "Player moved successfully"
+      });
     },
     onError: (error: Error) => {
       toast({
