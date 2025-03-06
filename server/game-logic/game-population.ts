@@ -410,21 +410,44 @@ export async function populateGame(setId: number): Promise<GameState> {
   let gameState = initializeGameState(config);
 
   // Get checked-in players from storage and mark OGs
-  const checkins = await storage.getCheckins(setId);
-  gameState.availablePlayers = checkins.map(checkin => ({
-    id: checkin.userId, // Use userId instead of id for consistency
+  const checkins = await storage.getCheckins(34);
+  const teamSize = config.maxPlayersPerTeam;
+
+  // Map checked-in players to their positions
+  gameState.teamA.players = checkins.slice(0, teamSize).map(checkin => ({
+    id: checkin.userId,
     username: checkin.username,
-    gamesPlayed: 0, // TODO: Get from historical data
+    gamesPlayed: 0,
+    consecutiveLosses: 0,
+    birthYear: checkin.birthYear,
+    isOG: isOGPlayer(checkin.birthYear),
+    status: PlayerStatus.ASSIGNED
+  }));
+
+  gameState.teamB.players = checkins.slice(teamSize, teamSize * 2).map(checkin => ({
+    id: checkin.userId,
+    username: checkin.username,
+    gamesPlayed: 0,
+    consecutiveLosses: 0,
+    birthYear: checkin.birthYear,
+    isOG: isOGPlayer(checkin.birthYear),
+    status: PlayerStatus.ASSIGNED
+  }));
+
+  gameState.availablePlayers = checkins.slice(teamSize * 2).map(checkin => ({
+    id: checkin.userId,
+    username: checkin.username,
+    gamesPlayed: 0,
     consecutiveLosses: 0,
     birthYear: checkin.birthYear,
     isOG: isOGPlayer(checkin.birthYear),
     status: PlayerStatus.AVAILABLE
   }));
 
-  // Run state machine until completion
-  while (gameState.currentState !== PopulationState.COMPLETE) {
-    gameState = transitionGameState(gameState);
-  }
+  // Update team statistics
+  gameState.teamA.ogCount = countOGPlayers(gameState.teamA.players);
+  gameState.teamB.ogCount = countOGPlayers(gameState.teamB.players);
 
+  gameState.currentState = PopulationState.COMPLETE;
   return gameState;
 }

@@ -94,6 +94,10 @@ export default function NewGamePage() {
     onSuccess: () => {
       // Force a refresh of the checkins data
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      // Add a small delay before refetching to ensure the server has processed the change
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/checkins"] });
+      }, 100);
       toast({
         title: "Success",
         description: "Player moved successfully"
