@@ -30,12 +30,6 @@ export default function NewGamePage() {
   const { data: activeGameSet, isLoading: gameSetLoading } = useQuery({
     queryKey: ["/api/game-sets/active"],
     enabled: !!user,
-    onSuccess: (data) => {
-      console.log('Received active game set:', data);
-    },
-    onError: (error) => {
-      console.error('Failed to fetch active game set:', error);
-    }
   });
 
   // Get checked-in players
@@ -47,15 +41,7 @@ export default function NewGamePage() {
   const createGameMutation = useMutation({
     mutationFn: async () => {
       if (!activeGameSet) {
-        console.error('No active game set found');
         throw new Error("No active game set available");
-      }
-
-      console.log('Active game set:', activeGameSet);
-
-      if (!activeGameSet.id) {
-        console.error('Game set has no ID');
-        throw new Error("Invalid game set");
       }
 
       const gameData: InsertGame = {
@@ -64,19 +50,14 @@ export default function NewGamePage() {
         court: selectedCourt,
       };
 
-      console.log('Creating game with data:', gameData);
-
       const gameRes = await apiRequest("POST", "/api/games", gameData);
 
       if (!gameRes.ok) {
         const errorText = await gameRes.text();
-        console.error('Game creation failed:', errorText);
         throw new Error(errorText);
       }
 
-      const game = await gameRes.json();
-      console.log('Game created successfully:', game);
-      return game;
+      return await gameRes.json();
     },
     onSuccess: (game) => {
       queryClient.invalidateQueries({ queryKey: ["/api/games/active"] });
@@ -87,7 +68,6 @@ export default function NewGamePage() {
       setLocation("/");
     },
     onError: (error: Error) => {
-      console.error('Game creation failed:', error);
       toast({
         title: "Failed to create game",
         description: error.message,
@@ -145,6 +125,13 @@ export default function NewGamePage() {
   const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
   const nextUpPlayers = checkins?.slice(playersNeeded) || [];
 
+  // Calculate current year for OG status
+  const currentYear = new Date().getFullYear();
+  const isOG = (birthYear?: number) => {
+    if (!birthYear) return false;
+    return (currentYear - birthYear) >= 75;
+  };
+
   // Player Card Component
   const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
     <div className={`flex items-center justify-between p-2 rounded-md ${
@@ -154,7 +141,12 @@ export default function NewGamePage() {
     }`}>
       <div className="flex items-center gap-4">
         <span className="font-mono text-lg">{index + 1}</span>
-        <span>{player.username}</span>
+        <div className="flex items-center gap-2">
+          <span>{player.username}</span>
+          {isOG(player.birthYear) && (
+            <span className="font-bold text-primary">OG</span>
+          )}
+        </div>
       </div>
       <div className="flex gap-2">
         <Button

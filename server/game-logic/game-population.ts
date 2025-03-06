@@ -1,40 +1,265 @@
-import { PopulationState, PlayerStatus, GameState, Player, Team, GameConfig } from './types';
+import { 
+  PopulationState, 
+  PlayerStatus, 
+  GameState, 
+  Player, 
+  Team, 
+  GameConfig,
+  MoveType,
+  MoveResult 
+} from './types';
 import { storage } from '../storage';
 
+// Current year constant for OG calculation
+const CURRENT_YEAR = new Date().getFullYear();
+const OG_AGE_THRESHOLD = 75;
+
 /**
- * Game Population Algorithm
- * 
- * This module implements a state machine for populating basketball games.
- * The algorithm follows these main states:
- * 
- * 1. WAITING_FOR_PLAYERS: Collecting and validating available players
- * 2. TEAM_ASSIGNMENT: Balanced team creation based on skill and history
- * 3. COURT_SELECTION: Determining optimal court assignment
- * 4. GAME_CREATION: Creating the game in the system
- * 5. COMPLETE: Finalization and cleanup
- * 
- * State transitions are handled by pure functions for testability and clarity.
+ * Check if a player is an OG based on birth year
  */
+function isOGPlayer(birthYear: number | undefined): boolean {
+  if (!birthYear) return false;
+  return (CURRENT_YEAR - birthYear) >= OG_AGE_THRESHOLD;
+}
 
 /**
  * Initialize a new game state
- * @param config Game configuration parameters
  */
 export function initializeGameState(config: GameConfig): GameState {
   return {
     currentState: PopulationState.WAITING_FOR_PLAYERS,
     availablePlayers: [],
-    teamA: { players: [], avgSkillRating: 0, totalGamesPlayed: 0 },
-    teamB: { players: [], avgSkillRating: 0, totalGamesPlayed: 0 },
+    teamA: { players: [], avgSkillRating: 0, totalGamesPlayed: 0, ogCount: 0 },
+    teamB: { players: [], avgSkillRating: 0, totalGamesPlayed: 0, ogCount: 0 },
     selectedCourt: null,
     config
   };
 }
 
 /**
+ * Move a player according to the specified move type
+ * This is the main decision function for player movements
+ */
+export function movePlayer(state: GameState, playerId: number, moveType: MoveType): MoveResult {
+  const playerIndex = findPlayerIndex(state, playerId);
+  if (playerIndex === -1) {
+    return {
+      success: false,
+      message: "Player not found",
+      updatedState: state
+    };
+  }
+
+  switch (moveType) {
+    case MoveType.CHECKOUT:
+      return handleCheckout(state, playerIndex);
+    case MoveType.BUMP:
+      return handleBump(state, playerIndex);
+    case MoveType.HORIZONTAL_SWAP:
+      return handleHorizontalSwap(state, playerIndex);
+    case MoveType.VERTICAL_SWAP:
+      return handleVerticalSwap(state, playerIndex);
+    default:
+      return {
+        success: false,
+        message: "Invalid move type",
+        updatedState: state
+      };
+  }
+}
+
+/**
+ * Find which list and position a player is in
+ * Returns: { list: 'teamA'|'teamB'|'available', index: number }
+ */
+function findPlayerIndex(state: GameState, playerId: number): number {
+  const inTeamA = state.teamA.players.findIndex(p => p.id === playerId);
+  if (inTeamA !== -1) return inTeamA;
+
+  const inTeamB = state.teamB.players.findIndex(p => p.id === playerId);
+  if (inTeamB !== -1) return inTeamB + state.teamA.players.length;
+
+  const inAvailable = state.availablePlayers.findIndex(p => p.id === playerId);
+  if (inAvailable !== -1) return inAvailable + state.teamA.players.length + state.teamB.players.length;
+
+  return -1;
+}
+
+/**
+ * Handle player checkout and replacement
+ */
+function handleCheckout(state: GameState, playerIndex: number): MoveResult {
+  const newState = { ...state };
+
+  // Determine which team the player is on
+  const teamSize = state.config.maxPlayersPerTeam;
+  const isTeamA = playerIndex < teamSize;
+  const isTeamB = playerIndex >= teamSize && playerIndex < teamSize * 2;
+
+  if (isTeamA || isTeamB) {
+    // Remove player and get next available
+    const nextPlayer = state.availablePlayers[0];
+    if (!nextPlayer) {
+      return {
+        success: false,
+        message: "No available players for replacement",
+        updatedState: state
+      };
+    }
+
+    if (isTeamA) {
+      newState.teamA.players[playerIndex] = nextPlayer;
+      newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
+    } else {
+      newState.teamB.players[playerIndex - teamSize] = nextPlayer;
+      newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
+    }
+
+    newState.availablePlayers = state.availablePlayers.slice(1);
+  }
+
+  return {
+    success: true,
+    updatedState: newState
+  };
+}
+
+/**
+ * Handle bumping a player with the next in queue
+ */
+function handleBump(state: GameState, playerIndex: number): MoveResult {
+  const newState = { ...state };
+  const teamSize = state.config.maxPlayersPerTeam;
+
+  // If player is in Next Up list
+  if (playerIndex >= teamSize * 2) {
+    const availableIndex = playerIndex - (teamSize * 2);
+    if (availableIndex >= state.availablePlayers.length - 1) {
+      return {
+        success: false,
+        message: "No player below to bump with",
+        updatedState: state
+      };
+    }
+
+    // Swap with next player in queue
+    const temp = newState.availablePlayers[availableIndex];
+    newState.availablePlayers[availableIndex] = newState.availablePlayers[availableIndex + 1];
+    newState.availablePlayers[availableIndex + 1] = temp;
+  } else {
+    // Player is in a team, swap with first available
+    if (state.availablePlayers.length === 0) {
+      return {
+        success: false,
+        message: "No available players to bump with",
+        updatedState: state
+      };
+    }
+
+    const bumpPlayer = newState.availablePlayers[0];
+    newState.availablePlayers = newState.availablePlayers.slice(1);
+
+    if (playerIndex < teamSize) {
+      const temp = newState.teamA.players[playerIndex];
+      newState.teamA.players[playerIndex] = bumpPlayer;
+      newState.availablePlayers.unshift(temp);
+      newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
+    } else {
+      const temp = newState.teamB.players[playerIndex - teamSize];
+      newState.teamB.players[playerIndex - teamSize] = bumpPlayer;
+      newState.availablePlayers.unshift(temp);
+      newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
+    }
+  }
+
+  return {
+    success: true,
+    updatedState: newState
+  };
+}
+
+/**
+ * Handle horizontal swap between teams
+ */
+function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult {
+  const newState = { ...state };
+  const teamSize = state.config.maxPlayersPerTeam;
+
+  // Only allow horizontal swaps for team players
+  if (playerIndex >= teamSize * 2) {
+    return {
+      success: false,
+      message: "Can only swap team players horizontally",
+      updatedState: state
+    };
+  }
+
+  const isTeamA = playerIndex < teamSize;
+  if (isTeamA) {
+    // Swap with corresponding player in team B
+    const temp = newState.teamA.players[playerIndex];
+    newState.teamA.players[playerIndex] = newState.teamB.players[playerIndex];
+    newState.teamB.players[playerIndex] = temp;
+  } else {
+    // Swap with corresponding player in team A
+    const teamBIndex = playerIndex - teamSize;
+    const temp = newState.teamB.players[teamBIndex];
+    newState.teamB.players[teamBIndex] = newState.teamA.players[teamBIndex];
+    newState.teamA.players[teamBIndex] = temp;
+  }
+
+  // Update OG counts
+  newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
+  newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
+
+  return {
+    success: true,
+    updatedState: newState
+  };
+}
+
+/**
+ * Handle vertical swap within a team
+ */
+function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
+  const newState = { ...state };
+  const teamSize = state.config.maxPlayersPerTeam;
+
+  // Only allow vertical swaps for team B players
+  if (playerIndex < teamSize || playerIndex >= teamSize * 2) {
+    return {
+      success: false,
+      message: "Can only swap team B players vertically",
+      updatedState: state
+    };
+  }
+
+  const teamBIndex = playerIndex - teamSize;
+  const nextIndex = (teamBIndex + 1) % teamSize;
+
+  // Swap with next player (or wrap to top)
+  const temp = newState.teamB.players[teamBIndex];
+  newState.teamB.players[teamBIndex] = newState.teamB.players[nextIndex];
+  newState.teamB.players[nextIndex] = temp;
+
+  // Update OG count (though it shouldn't change for same-team swaps)
+  newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
+
+  return {
+    success: true,
+    updatedState: newState
+  };
+}
+
+/**
+ * Count OG players in a team
+ */
+function countOGPlayers(players: Player[]): number {
+  return players.filter(p => isOGPlayer(p.birthYear)).length;
+}
+
+/**
  * Main state machine transition function
- * @param currentState Current game state
- * @returns Updated game state
  */
 export function transitionGameState(state: GameState): GameState {
   switch (state.currentState) {
@@ -155,7 +380,8 @@ function createTeam(players: Player[]): Team {
   return {
     players,
     avgSkillRating: avgSkill,
-    totalGamesPlayed: totalGames
+    totalGamesPlayed: totalGames,
+    ogCount: countOGPlayers(players)
   };
 }
 
@@ -182,13 +408,15 @@ export async function populateGame(setId: number): Promise<GameState> {
 
   let gameState = initializeGameState(config);
 
-  // Get checked-in players from storage
-  const checkins = await storage.getCheckins(34);
+  // Get checked-in players from storage and mark OGs
+  const checkins = await storage.getCheckins(setId);
   gameState.availablePlayers = checkins.map(checkin => ({
     id: checkin.userId,
     username: checkin.username,
     gamesPlayed: 0, // TODO: Get from historical data
     consecutiveLosses: 0,
+    birthYear: checkin.birthYear,
+    isOG: isOGPlayer(checkin.birthYear),
     status: PlayerStatus.AVAILABLE
   }));
 

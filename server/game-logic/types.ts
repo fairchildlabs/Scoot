@@ -19,6 +19,14 @@ export enum PlayerStatus {
   BENCHED = "BENCHED"
 }
 
+// Movement types for player repositioning
+export enum MoveType {
+  CHECKOUT = "CHECKOUT",
+  BUMP = "BUMP",
+  HORIZONTAL_SWAP = "HORIZONTAL_SWAP",
+  VERTICAL_SWAP = "VERTICAL_SWAP"
+}
+
 // Game configuration parameters
 export type GameConfig = {
   minPlayersPerTeam: number;
@@ -35,6 +43,8 @@ export type Player = {
   consecutiveLosses: number;
   lastGameTime?: Date;
   status: PlayerStatus;
+  birthYear?: number;
+  isOG?: boolean;
 };
 
 // Team composition
@@ -42,6 +52,7 @@ export type Team = {
   players: Player[];
   avgSkillRating: number;
   totalGamesPlayed: number;
+  ogCount: number;
 };
 
 // Game state for the population algorithm
@@ -52,4 +63,11 @@ export type GameState = {
   teamB: Team;
   selectedCourt: string | null;
   config: GameConfig;
+};
+
+// Movement operation result
+export type MoveResult = {
+  success: boolean;
+  message?: string;
+  updatedState: GameState;
 };
