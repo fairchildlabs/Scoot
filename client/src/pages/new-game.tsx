@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, X, HandMetal, ArrowLeftRight, ArrowDownAZ } from "lucide-react";
+import { Loader2, X, HandMetal, ArrowLeftRight, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Redirect, useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
@@ -148,9 +148,9 @@ export default function NewGamePage() {
   // Player Card Component
   const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
     <div className={`flex items-center justify-between p-2 rounded-md ${
-      isNextUp ? 'bg-secondary/30 text-white' : 
-      isAway ? 'bg-black text-white border border-white' : 
-      'bg-white text-black'
+      isNextUp ? 'bg-secondary/30 text-white' :
+        isAway ? 'bg-black text-white border border-white' :
+          'bg-white text-black'
     }`}>
       <div className="flex items-center gap-4">
         <span className="font-mono text-lg">{index + 1}</span>
@@ -180,7 +180,7 @@ export default function NewGamePage() {
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => swapMutation.mutate(player.id)}
           >
-            {isAway ? <ArrowDownAZ className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
+            {isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
           </Button>
         )}
       </div>
@@ -258,7 +258,7 @@ export default function NewGamePage() {
                 </div>
 
                 <Button
-                  className="w-full"
+                  className="w-full border border-white"
                   onClick={() => createGameMutation.mutate()}
                   disabled={createGameMutation.isPending}
                 >
