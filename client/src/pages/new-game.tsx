@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, HandMetal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Redirect, useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
@@ -96,6 +96,25 @@ export default function NewGamePage() {
     }
   });
 
+  // Mutations for player actions
+  const checkoutMutation = useMutation({
+    mutationFn: async (playerId: number) => {
+      const res = await apiRequest("DELETE", `/api/checkins/${playerId}`);
+      if (!res.ok) throw new Error("Failed to check out player");
+      return playerId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+    }
+  });
+
+  const bumpMutation = useMutation({
+    mutationFn: async (playerId: number) => {
+      // TODO: Implement bump logic using game population algorithm
+      console.log("Bump player:", playerId);
+    }
+  });
+
   if (checkinsLoading || gameSetLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -113,9 +132,38 @@ export default function NewGamePage() {
   const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
   const playersCheckedIn = checkins?.length || 0;
 
-  // Split players into home and away teams
+  // Split players into home and away teams and next up
   const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
   const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
+  const nextUpPlayers = checkins?.slice(playersNeeded) || [];
+
+  // Player Card Component
+  const PlayerCard = ({ player, index, isNextUp = false }: { player: any; index: number; isNextUp?: boolean }) => (
+    <div className={`flex items-center justify-between p-2 rounded-md ${isNextUp ? 'bg-secondary/50' : 'bg-white'} ${isNextUp ? 'text-white' : 'text-black'}`}>
+      <div className="flex items-center gap-4">
+        <span className="font-mono text-lg">{index + 1}</span>
+        <span>{player.username}</span>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          size="icon"
+          variant="outline"
+          className="rounded-full h-8 w-8"
+          onClick={() => checkoutMutation.mutate(player.id)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="outline"
+          className="rounded-full h-8 w-8"
+          onClick={() => bumpMutation.mutate(player.id)}
+        >
+          <HandMetal className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -160,10 +208,8 @@ export default function NewGamePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {homePlayers.map((player: any) => (
-                          <div key={player.id} className="p-2 rounded-md bg-white text-black">
-                            {player.username}
-                          </div>
+                        {homePlayers.map((player: any, index: number) => (
+                          <PlayerCard key={player.id} player={player} index={index} />
                         ))}
                       </div>
                     </CardContent>
@@ -176,10 +222,12 @@ export default function NewGamePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {awayPlayers.map((player: any) => (
-                          <div key={player.id} className="p-2 rounded-md bg-black text-white border border-white">
-                            {player.username}
-                          </div>
+                        {awayPlayers.map((player: any, index: number) => (
+                          <PlayerCard
+                            key={player.id}
+                            player={player}
+                            index={index + homePlayers.length}
+                          />
                         ))}
                       </div>
                     </CardContent>
@@ -193,6 +241,27 @@ export default function NewGamePage() {
                 >
                   {createGameMutation.isPending ? "Creating..." : "Create Game"}
                 </Button>
+
+                {/* Next Up Section */}
+                {nextUpPlayers.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-medium mb-4">Next Up</h3>
+                    <Card className="bg-black/10">
+                      <CardContent className="pt-6">
+                        <div className="space-y-2">
+                          {nextUpPlayers.map((player: any, index: number) => (
+                            <PlayerCard
+                              key={player.id}
+                              player={player}
+                              index={index + playersNeeded}
+                              isNextUp
+                            />
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
