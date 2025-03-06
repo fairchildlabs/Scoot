@@ -38,7 +38,6 @@ export function initializeGameState(config: GameConfig): GameState {
 
 /**
  * Move a player according to the specified move type
- * This is the main decision function for player movements
  */
 export function movePlayer(state: GameState, playerId: number, moveType: MoveType): MoveResult {
   const playerIndex = findPlayerIndex(state, playerId);
@@ -50,15 +49,17 @@ export function movePlayer(state: GameState, playerId: number, moveType: MoveTyp
     };
   }
 
+  let newState = JSON.parse(JSON.stringify(state)); // Deep clone to avoid mutations
+
   switch (moveType) {
     case MoveType.CHECKOUT:
-      return handleCheckout(state, playerIndex);
+      return handleCheckout(newState, playerIndex);
     case MoveType.BUMP:
-      return handleBump(state, playerIndex);
+      return handleBump(newState, playerIndex);
     case MoveType.HORIZONTAL_SWAP:
-      return handleHorizontalSwap(state, playerIndex);
+      return handleHorizontalSwap(newState, playerIndex);
     case MoveType.VERTICAL_SWAP:
-      return handleVerticalSwap(state, playerIndex);
+      return handleVerticalSwap(newState, playerIndex);
     default:
       return {
         success: false,

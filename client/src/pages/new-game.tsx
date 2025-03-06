@@ -78,6 +78,7 @@ export default function NewGamePage() {
     mutationFn: async ({ playerId, moveType }: { playerId: number, moveType: string }) => {
       if (!activeGameSet) throw new Error("No active game set");
 
+      console.log('Making player move:', { playerId, moveType });
       const res = await apiRequest("POST", "/api/player-move", {
         playerId,
         moveType,
@@ -91,7 +92,6 @@ export default function NewGamePage() {
       return await res.json();
     },
     onSuccess: () => {
-      // Invalidate the checkins query to refresh the UI
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
       toast({
         title: "Success",
@@ -108,7 +108,7 @@ export default function NewGamePage() {
     }
   });
 
-  if (checkinsLoading || gameSetLoading || playerMoveMutation.isPending) {
+  if (gameSetLoading || checkinsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -137,65 +137,73 @@ export default function NewGamePage() {
     return (currentYear - birthYear) >= 75;
   };
 
-  // Player Card Component
-  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
-    <div className={`flex items-center justify-between p-2 rounded-md ${
-      isNextUp ? 'bg-secondary/30 text-white' :
-        isAway ? 'bg-black text-white border border-white' :
-          'bg-white text-black'
-    }`}>
-      <div className="flex items-center gap-4">
-        <span className="font-mono text-lg">{index + 1}</span>
-        <span>{player.username}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        {isOG(player.birthYear) && (
-          <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
-        )}
-        <Button
-          size="icon"
-          variant="outline"
-          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => {
-            console.log('Checkout clicked:', player.userId);
-            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT' });
-          }}
-          disabled={playerMoveMutation.isPending}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="outline"
-          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => {
-            console.log('Bump clicked:', player.userId);
-            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP' });
-          }}
-          disabled={playerMoveMutation.isPending}
-        >
-          <HandMetal className="h-4 w-4" />
-        </Button>
-        {!isNextUp && (
+  // PlayerCard component
+  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => {
+    const isPending = playerMoveMutation.isPending;
+
+    return (
+      <div className={`flex items-center justify-between p-2 rounded-md ${
+        isNextUp ? 'bg-secondary/30 text-white' :
+          isAway ? 'bg-black text-white border border-white' :
+            'bg-white text-black'
+      }`}>
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-lg">{index + 1}</span>
+          <span>{player.username}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {isOG(player.birthYear) && (
+            <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
+          )}
           <Button
             size="icon"
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => {
-              console.log('Swap clicked:', player.userId, isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP');
-              playerMoveMutation.mutate({
-                playerId: player.userId,
-                moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
-              });
+              console.log('Checkout clicked:', player.userId);
+              playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT' });
             }}
-            disabled={playerMoveMutation.isPending}
+            disabled={isPending}
           >
-            {isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
           </Button>
-        )}
+          <Button
+            size="icon"
+            variant="outline"
+            className="rounded-full h-8 w-8 border-white text-white hover:text-white"
+            onClick={() => {
+              console.log('Bump clicked:', player.userId);
+              playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP' });
+            }}
+            disabled={isPending}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandMetal className="h-4 w-4" />}
+          </Button>
+          {!isNextUp && (
+            <Button
+              size="icon"
+              variant="outline"
+              className="rounded-full h-8 w-8 border-white text-white hover:text-white"
+              onClick={() => {
+                console.log('Swap clicked:', player.userId, isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP');
+                playerMoveMutation.mutate({
+                  playerId: player.userId,
+                  moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
+                });
+              }}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
