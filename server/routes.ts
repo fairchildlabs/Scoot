@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertGameSetSchema } from "@shared/schema";
+import { populateGame } from "./game-logic/game-population";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -61,9 +62,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Missing setId");
       }
 
+      // Use the game population algorithm to assign teams and court
+      const gameState = await populateGame(req.body.setId);
+
+      // Create the game with the selected court
       const game = await storage.createGame(
         req.body.setId,
-        req.body.court || 'West'
+        gameState.selectedCourt || 'West'
       );
 
       console.log('POST /api/games - Created game:', game);
