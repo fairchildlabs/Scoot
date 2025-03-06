@@ -198,16 +198,15 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
   const isTeamA = playerIndex < teamSize;
 
   if (isTeamA) {
-    // If in Team A, swap with corresponding Team B player
-    const teamBIndex = playerIndex + teamSize;  // Add teamSize to get to Team B position
+    // If in Team A, swap with corresponding Team B player at same relative position
     const temp = newState.teamA.players[playerIndex];
     newState.teamA.players[playerIndex] = newState.teamB.players[playerIndex];
     newState.teamB.players[playerIndex] = temp;
   } else {
-    // If in Team B, swap with corresponding Team A player
-    const teamAIndex = playerIndex - teamSize;  // Subtract teamSize to get to Team A position
-    const temp = newState.teamB.players[playerIndex - teamSize];
-    newState.teamB.players[playerIndex - teamSize] = newState.teamA.players[teamAIndex];
+    // If in Team B, swap with corresponding Team A player at same relative position
+    const teamAIndex = playerIndex - teamSize;
+    const temp = newState.teamB.players[teamAIndex];
+    newState.teamB.players[teamAIndex] = newState.teamA.players[teamAIndex];
     newState.teamA.players[teamAIndex] = temp;
   }
 
@@ -238,11 +237,14 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   }
 
   const teamBIndex = playerIndex - teamSize;
+  const firstTeamBIndex = 0;
+  const lastTeamBIndex = teamSize - 1;
 
-  // Calculate next index - wrap to start of Team B if at end
-  const nextIndex = (teamBIndex === teamSize - 1) ? 0 : teamBIndex + 1;
+  // If at the last position in Team B, wrap to first Team B position
+  // Otherwise, swap with next position
+  const nextIndex = teamBIndex === lastTeamBIndex ? firstTeamBIndex : teamBIndex + 1;
 
-  // Swap with next player in team B (or wrap to first Team B player)
+  // Swap players within Team B
   const temp = newState.teamB.players[teamBIndex];
   newState.teamB.players[teamBIndex] = newState.teamB.players[nextIndex];
   newState.teamB.players[nextIndex] = temp;
