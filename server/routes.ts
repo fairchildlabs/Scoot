@@ -27,7 +27,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/checkins", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const checkins = await storage.getCheckins(34);
-    res.json(checkins);
+
+    // Get complete user data for each checkin
+    const checkinsWithUserData = await Promise.all(
+      checkins.map(async (checkin) => {
+        const user = await storage.getUser(checkin.userId);
+        return {
+          ...checkin,
+          birthYear: user?.birthYear
+        };
+      })
+    );
+
+    res.json(checkinsWithUserData);
   });
 
   app.post("/api/checkins", async (req, res) => {
