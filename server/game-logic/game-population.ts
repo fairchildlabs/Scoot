@@ -216,11 +216,13 @@ function handleBump(state: GameState, playerIndex: number): MoveResult {
 function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult {
   const teamSize = state.config.maxPlayersPerTeam;
 
+  // Add detailed logging to understand the indexing
   console.log('Horizontal Swap - Starting with:', {
     playerIndex,
     teamSize,
-    teamA: state.teamA.players.map((p, i) => `${i+1}:${p.username}`),
-    teamB: state.teamB.players.map((p, i) => `${i+5}:${p.username}`)
+    displayIndex: playerIndex < teamSize ? playerIndex + 1 : playerIndex + 1,
+    teamAPlayers: state.teamA.players.map((p, i) => `${i+1}:${p.username}`),
+    teamBPlayers: state.teamB.players.map((p, i) => `${i+5}:${p.username}`)
   });
 
   // Only allow horizontal swaps for team players
@@ -232,35 +234,34 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
     };
   }
 
-  const newState = JSON.parse(JSON.stringify(state)); // Deep clone
+  const newState = JSON.parse(JSON.stringify(state));
   const isTeamA = playerIndex < teamSize;
+  const swapIndex = isTeamA ? playerIndex : (playerIndex - teamSize);
+
+  console.log('Horizontal Swap - Calculated indices:', {
+    isTeamA,
+    swapIndex,
+    displaySourceIndex: isTeamA ? swapIndex + 1 : swapIndex + 5,
+    displayTargetIndex: isTeamA ? swapIndex + 5 : swapIndex + 1,
+    sourcePlayer: isTeamA ? 
+      state.teamA.players[swapIndex]?.username : 
+      state.teamB.players[swapIndex]?.username,
+    targetPlayer: isTeamA ? 
+      state.teamB.players[swapIndex]?.username :
+      state.teamA.players[swapIndex]?.username
+  });
+
+  // Perform the swap using the same index in both teams
+  const temp = isTeamA ? 
+    newState.teamA.players[swapIndex] :
+    newState.teamB.players[swapIndex];
 
   if (isTeamA) {
-    // Player is in Team A (Home) - swap with same relative position in Team B
-    const relativePosition = playerIndex;
-    console.log('Home team swap:', {
-      homePlayerIndex: playerIndex,
-      homePlayerName: state.teamA.players[relativePosition].username,
-      awayPlayerName: state.teamB.players[relativePosition].username
-    });
-
-    // Simple swap at the same relative position
-    const temp = newState.teamA.players[relativePosition];
-    newState.teamA.players[relativePosition] = newState.teamB.players[relativePosition];
-    newState.teamB.players[relativePosition] = temp;
+    newState.teamA.players[swapIndex] = newState.teamB.players[swapIndex];
+    newState.teamB.players[swapIndex] = temp;
   } else {
-    // Player is in Team B (Away) - swap with same relative position in Team A
-    const relativePosition = playerIndex - teamSize;
-    console.log('Away team swap:', {
-      awayPlayerIndex: playerIndex,
-      awayPlayerName: state.teamB.players[relativePosition].username,
-      homePlayerName: state.teamA.players[relativePosition].username
-    });
-
-    // Simple swap at the same relative position
-    const temp = newState.teamB.players[relativePosition];
-    newState.teamB.players[relativePosition] = newState.teamA.players[relativePosition];
-    newState.teamA.players[relativePosition] = temp;
+    newState.teamB.players[swapIndex] = newState.teamA.players[swapIndex];
+    newState.teamA.players[swapIndex] = temp;
   }
 
   // Update OG counts
@@ -287,7 +288,8 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   console.log('Vertical Swap - Starting with:', {
     playerIndex,
     teamSize,
-    teamB: state.teamB.players.map((p, i) => `${i+5}:${p.username}`)
+    displayIndex: playerIndex + 1,
+    teamBPlayers: state.teamB.players.map((p, i) => `${i+5}:${p.username}`)
   });
 
   // Only allow vertical swaps for Team B players
@@ -300,25 +302,27 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   }
 
   const newState = JSON.parse(JSON.stringify(state));
-  const currentIndex = playerIndex - teamSize; // Position within Team B (0-4)
+  const currentIndex = playerIndex - teamSize; // Convert to Team B array index (0-based)
 
-  // For last player (#8), wrap to first Away position (#5)
-  // Otherwise move to next position
+  // Calculate next index within Team B array
+  // Last player should wrap to first Away position
   const nextIndex = currentIndex === teamSize - 1 ? 0 : currentIndex + 1;
 
-  console.log('Vertical Swap - Calculated positions:', {
-    currentPlayer: `${currentIndex+5}:${state.teamB.players[currentIndex].username}`,
-    nextPlayer: `${nextIndex+5}:${state.teamB.players[nextIndex].username}`,
+  console.log('Vertical Swap - Calculated indices:', {
     currentIndex,
-    nextIndex
+    nextIndex,
+    displayCurrentIndex: currentIndex + 5,
+    displayNextIndex: nextIndex + 5,
+    currentPlayer: state.teamB.players[currentIndex]?.username,
+    nextPlayer: state.teamB.players[nextIndex]?.username
   });
 
-  // Perform the swap within Team B
+  // Perform the swap
   const temp = newState.teamB.players[currentIndex];
   newState.teamB.players[currentIndex] = newState.teamB.players[nextIndex];
   newState.teamB.players[nextIndex] = temp;
 
-  // Update Team B OG count
+  // Update OG count
   newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
 
   console.log('Vertical Swap - Result:', {
