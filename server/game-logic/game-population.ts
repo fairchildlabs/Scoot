@@ -198,18 +198,19 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
   const isTeamA = playerIndex < teamSize;
   const position = isTeamA ? playerIndex : playerIndex - teamSize;
 
-  // Swap with corresponding player in opposite team
+  // For team A players, swap with corresponding team B player
+  // For team B players, swap with corresponding team A player
+  const temp = isTeamA ? newState.teamA.players[position] : newState.teamB.players[position];
+
   if (isTeamA) {
-    const temp = newState.teamA.players[position];
     newState.teamA.players[position] = newState.teamB.players[position];
     newState.teamB.players[position] = temp;
   } else {
-    const temp = newState.teamB.players[position];
     newState.teamB.players[position] = newState.teamA.players[position];
     newState.teamA.players[position] = temp;
   }
 
-  // Update OG counts
+  // Update OG counts for both teams
   newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
   newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
 
@@ -237,14 +238,15 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
 
   const teamBIndex = playerIndex - teamSize;
   // If at the last position, wrap to the first position
-  const nextIndex = (teamBIndex + 1) % teamSize;
+  // If not at the last position, swap with next player
+  const nextIndex = (teamBIndex === teamSize - 1) ? 0 : teamBIndex + 1;
 
-  // Swap with next player in team B (or wrap to top)
+  // Swap with next player in team B (or wrap to first position)
   const temp = newState.teamB.players[teamBIndex];
   newState.teamB.players[teamBIndex] = newState.teamB.players[nextIndex];
   newState.teamB.players[nextIndex] = temp;
 
-  // Update OG count (though it shouldn't change for same-team swaps)
+  // Update OG count for team B
   newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
 
   return {
