@@ -156,13 +156,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { playerId, moveType, setId } = req.body;
 
     try {
+      console.log('POST /api/player-move - Request:', { playerId, moveType, setId });
+
       // Get current game state
       const gameState = await populateGame(setId);
+      console.log('Current game state:', gameState);
 
       // Apply the move
       const result = movePlayer(gameState, playerId, moveType as MoveType);
 
       if (!result.success) {
+        console.log('Move failed:', result.message);
         return res.status(400).json({ error: result.message });
       }
 
