@@ -411,7 +411,7 @@ export async function populateGame(setId: number): Promise<GameState> {
   // Get checked-in players from storage and mark OGs
   const checkins = await storage.getCheckins(setId);
   gameState.availablePlayers = checkins.map(checkin => ({
-    id: checkin.userId,
+    id: checkin.userId, // Use userId instead of id for consistency
     username: checkin.username,
     gamesPlayed: 0, // TODO: Get from historical data
     consecutiveLosses: 0,

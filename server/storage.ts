@@ -6,6 +6,7 @@ import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
+import { GameState } from "./game-logic/types";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -34,6 +35,7 @@ export interface IStorage {
   getActiveGameSet(): Promise<GameSet | undefined>;
   getAllGameSets(): Promise<GameSet[]>;
   deactivateGameSet(setId: number): Promise<void>;
+  updateCheckins(setId: number, gameState: GameState): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -188,6 +190,33 @@ export class DatabaseStorage implements IStorage {
       .update(gameSets)
       .set({ isActive: false })
       .where(eq(gameSets.id, setId));
+  }
+
+  async updateCheckins(setId: number, gameState: GameState): Promise<void> {
+    const today = getDateString(getCentralTime());
+
+    // Deactivate all current checkins
+    await db
+      .update(checkins)
+      .set({ isActive: false })
+      .where(
+        and(
+          eq(checkins.clubIndex, 34),
+          eq(checkins.checkInDate, today),
+          eq(checkins.isActive, true)
+        )
+      );
+
+    // Create new checkins for players in order based on game state
+    const allPlayers = [
+      ...gameState.teamA.players,
+      ...gameState.teamB.players,
+      ...gameState.availablePlayers
+    ];
+
+    for (const player of allPlayers) {
+      await this.createCheckin(player.id, 34);
+    }
   }
 }
 
