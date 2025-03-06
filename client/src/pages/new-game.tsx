@@ -100,6 +100,7 @@ export default function NewGamePage() {
       });
     },
     onError: (error: Error) => {
+      console.error('Player move failed:', error);
       toast({
         title: "Action failed",
         description: error.message,
@@ -156,7 +157,11 @@ export default function NewGamePage() {
           size="icon"
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT' })}
+          onClick={() => {
+            console.log('Checkout clicked:', player.userId);
+            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT' });
+          }}
+          disabled={playerMoveMutation.isPending}
         >
           <X className="h-4 w-4" />
         </Button>
@@ -164,7 +169,11 @@ export default function NewGamePage() {
           size="icon"
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP' })}
+          onClick={() => {
+            console.log('Bump clicked:', player.userId);
+            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP' });
+          }}
+          disabled={playerMoveMutation.isPending}
         >
           <HandMetal className="h-4 w-4" />
         </Button>
@@ -173,10 +182,14 @@ export default function NewGamePage() {
             size="icon"
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-            onClick={() => playerMoveMutation.mutate({
-              playerId: player.userId,
-              moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
-            })}
+            onClick={() => {
+              console.log('Swap clicked:', player.userId, isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP');
+              playerMoveMutation.mutate({
+                playerId: player.userId,
+                moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
+              });
+            }}
+            disabled={playerMoveMutation.isPending}
           >
             {isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />}
           </Button>
