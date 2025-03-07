@@ -458,11 +458,12 @@ function isValidGameState(state: GameState): boolean {
  * Public API
  */
 
+// Initialize game state with correct team size
 export async function populateGame(setId: number): Promise<GameState> {
   // Initialize game state with default config
   const config: GameConfig = {
     minPlayersPerTeam: 3,
-    maxPlayersPerTeam: 5,
+    maxPlayersPerTeam: 4,  // Changed from 5 to 4
     maxConsecutiveLosses: 2,
     courtPreference: ['West', 'East']
   };
