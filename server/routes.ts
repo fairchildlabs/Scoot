@@ -153,17 +153,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
 
-    const { playerId, moveType, setId, playerIndex } = req.body;
+    const { playerId, moveType, setId } = req.body;
 
     try {
-      console.log('POST /api/player-move - Request:', { playerId, moveType, setId, playerIndex });
+      console.log('POST /api/player-move - Request:', { playerId, moveType, setId });
 
       // Get current game state
       const gameState = await populateGame(setId);
       console.log('Current game state:', gameState);
 
-      // Apply the move using the provided playerIndex
-      const result = movePlayer(gameState, playerIndex, moveType as MoveType);
+      // Apply the move
+      const result = movePlayer(gameState, playerId, moveType as MoveType);
 
       if (!result.success) {
         console.log('Move failed:', result.message);

@@ -9,25 +9,17 @@ import { Redirect, useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { type InsertGame } from "@shared/schema";
-
-type Checkin = {
-  id: number;
-  userId: number;
-  username: string;
-  birthYear?: number;
-  checkInTime: string;
-  isActive: boolean;
-};
 
 const courtOptions = ['West', 'East'] as const;
 
 export default function NewGamePage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedCourt, setSelectedCourt] = useState<typeof courtOptions[number]>('West');
-  const [swapStatus, setSwapStatus] = useState<string>('');
 
   // Only allow engineers and root users
   if (!user?.isEngineer && !user?.isRoot) {
@@ -40,13 +32,10 @@ export default function NewGamePage() {
     enabled: !!user,
   });
 
-  // Get checked-in players with proper typing and immediate updates
-  const { data: checkins = [], isLoading: checkinsLoading } = useQuery<Checkin[]>({
+  // Get checked-in players
+  const { data: checkins = [], isLoading: checkinsLoading } = useQuery({
     queryKey: ["/api/checkins"],
     enabled: !!user,
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true
   });
 
   const createGameMutation = useMutation({
@@ -68,24 +57,32 @@ export default function NewGamePage() {
       }
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (game) => {
       queryClient.invalidateQueries({ queryKey: ["/api/games/active"] });
+      toast({
+        title: "Success",
+        description: `Game #${game.id} created successfully`
+      });
       setLocation("/");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create game",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   });
 
   const playerMoveMutation = useMutation({
-    mutationFn: async ({ playerId, moveType }: { playerId: number; moveType: string }) => {
+    mutationFn: async ({ playerId, moveType }: { playerId: number, moveType: string }) => {
       if (!activeGameSet) throw new Error("No active game set");
 
-      // Calculate player index based on their position in the checkins array
-      const playerIndex = checkins.findIndex(c => c.userId === playerId);
-
+      console.log('Making player move:', { playerId, moveType });
       const res = await apiRequest("POST", "/api/player-move", {
         playerId,
         moveType,
-        setId: activeGameSet.id,
-        playerIndex // Send the actual index to the backend
+        setId: activeGameSet.id
       });
 
       if (!res.ok) {
@@ -94,33 +91,30 @@ export default function NewGamePage() {
       }
       return await res.json();
     },
-    onSuccess: async (_, variables) => {
-      // Update swap status message
-      const player = checkins.find((c: Checkin) => c.userId === variables.playerId);
-      if (player) {
-        const displayNumber = checkins.findIndex((c: Checkin) => c.userId === variables.playerId) + 1;
-        if (variables.moveType === 'HORIZONTAL_SWAP') {
-          setSwapStatus(`Home ${displayNumber} swapped with Away ${displayNumber + 4}`);
-        } else if (variables.moveType === 'VERTICAL_SWAP') {
-          const nextNumber = ((displayNumber - 5 + 1) % 4) + 5;
-          setSwapStatus(`Away ${displayNumber} swapped with Away ${nextNumber}`);
-        }
-      }
-
-      // Force immediate data refresh
-      await queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-      await queryClient.refetchQueries({
-        queryKey: ["/api/checkins"],
-        exact: true,
-        type: 'active'
+    onSuccess: () => {
+      // Force a refresh of the checkins data
+      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      // Add a small delay before refetching to ensure the server has processed the change
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/checkins"] });
+      }, 100);
+      toast({
+        title: "Success",
+        description: "Player moved successfully"
       });
     },
     onError: (error: Error) => {
-      setSwapStatus(`Error: ${error.message}`);
+      console.error('Player move failed:', error);
+      toast({
+        title: "Action failed",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   });
 
-  const isLoading = playerMoveMutation.isPending || createGameMutation.isPending;
+  // Extract the loading state
+  const isLoading = playerMoveMutation.isPending;
 
   if (gameSetLoading || checkinsLoading) {
     return (
@@ -151,26 +145,27 @@ export default function NewGamePage() {
     return (currentYear - birthYear) >= 75;
   };
 
-  // PlayerCard component with clean layout
-  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: Checkin; index: number; isNextUp?: boolean; isAway?: boolean }) => (
-    <div className={`flex items-center justify-between p-4 rounded-md ${
+  // PlayerCard component
+  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
+    <div className={`flex items-center justify-between p-2 rounded-md ${
       isNextUp ? 'bg-secondary/30 text-white' :
         isAway ? 'bg-black text-white border border-white' :
           'bg-white text-black'
     }`}>
+      <div className="flex items-center gap-4">
+        <span className="font-mono text-lg">{isAway ? index + homePlayers.length + 1 : index + 1}</span>
+        <span>{player.username}</span>
+      </div>
       <div className="flex items-center gap-2">
-        <span className="font-mono text-lg min-w-[24px]">{isAway ? index + homePlayers.length + 1 : index + 1}</span>
-        <span className="font-medium truncate max-w-[120px]">{player.username}</span>
         {isOG(player.birthYear) && (
           <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
         )}
-      </div>
-      <div className="flex items-center gap-2">
         <Button
           size="icon"
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
           onClick={() => {
+            console.log('Checkout clicked:', player.userId);
             playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT' });
           }}
           disabled={isLoading}
@@ -182,6 +177,7 @@ export default function NewGamePage() {
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
           onClick={() => {
+            console.log('Bump clicked:', player.userId);
             playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP' });
           }}
           disabled={isLoading}
@@ -194,6 +190,19 @@ export default function NewGamePage() {
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => {
+              // For horizontal swap: send array index directly
+              // For vertical swap: send array index + teamSize
+              const playerIndex = isAway ? 
+                index + activeGameSet!.playersPerTeam : 
+                index;
+
+              console.log(isAway ? 'Vertical Swap - Frontend:' : 'Horizontal Swap - Frontend:', {
+                userId: player.userId,
+                isHome: !isAway,
+                displayNumber: isAway ? index + homePlayers.length + 1 : index + 1,
+                calculatedIndex: playerIndex
+              });
+
               playerMoveMutation.mutate({
                 playerId: player.userId,
                 moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
@@ -234,13 +243,6 @@ export default function NewGamePage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Status Message */}
-                {swapStatus && (
-                  <div className="bg-destructive/20 text-destructive p-3 rounded-md text-center font-medium">
-                    {swapStatus}
-                  </div>
-                )}
-
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Select Court</h3>
                   <div className="flex items-center justify-center gap-4 bg-white rounded-lg p-4">
@@ -254,8 +256,7 @@ export default function NewGamePage() {
                   </div>
                 </div>
 
-                {/* Teams Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   {/* Home Team */}
                   <Card className="bg-black/20 border border-white">
                     <CardHeader>
@@ -263,7 +264,7 @@ export default function NewGamePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {homePlayers.map((player: Checkin, index: number) => (
+                        {homePlayers.map((player: any, index: number) => (
                           <PlayerCard key={player.id} player={player} index={index} />
                         ))}
                       </div>
@@ -277,7 +278,7 @@ export default function NewGamePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {awayPlayers.map((player: Checkin, index: number) => (
+                        {awayPlayers.map((player: any, index: number) => (
                           <PlayerCard
                             key={player.id}
                             player={player}
@@ -293,7 +294,7 @@ export default function NewGamePage() {
                 <Button
                   className="w-full border border-white"
                   onClick={() => createGameMutation.mutate()}
-                  disabled={isLoading}
+                  disabled={createGameMutation.isPending}
                 >
                   {createGameMutation.isPending ? "Creating..." : "Create Game"}
                 </Button>
@@ -304,8 +305,8 @@ export default function NewGamePage() {
                     <h3 className="text-lg font-medium mb-4">Next Up</h3>
                     <Card className="bg-black/10">
                       <CardContent className="pt-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {nextUpPlayers.map((player: Checkin, index: number) => (
+                        <div className="space-y-2">
+                          {nextUpPlayers.map((player: any, index: number) => (
                             <PlayerCard
                               key={player.id}
                               player={player}
