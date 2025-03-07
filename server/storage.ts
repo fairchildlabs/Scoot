@@ -214,6 +214,7 @@ export class DatabaseStorage implements IStorage {
       ...gameState.availablePlayers
     ];
 
+    // Create checkins one by one to maintain order
     for (const player of allPlayers) {
       await this.createCheckin(player.id, 34);
     }

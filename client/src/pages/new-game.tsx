@@ -36,8 +36,8 @@ export default function NewGamePage() {
     queryKey: ["/api/checkins"],
     enabled: !!user,
     staleTime: 0,
-    refetchInterval: 0,
-    refetchOnWindowFocus: true
+    cacheTime: 0,
+    refetchInterval: 0
   });
 
   const createGameMutation = useMutation({

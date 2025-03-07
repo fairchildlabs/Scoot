@@ -237,11 +237,11 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
     playerIndex,
     swapIndex,
     homePlayer: {
-      name: state.teamA.players[swapIndex].username,
+      name: state.teamA.players[swapIndex]?.username,
       display: swapIndex + 1
     },
     awayPlayer: {
-      name: state.teamB.players[swapIndex].username,
+      name: state.teamB.players[swapIndex]?.username,
       display: swapIndex + 5
     }
   });
@@ -298,7 +298,7 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
     }
   });
 
-  // Swap players at these positions
+  // Swap current player with next position
   const temp = newState.teamB.players[currentIndex];
   newState.teamB.players[currentIndex] = newState.teamB.players[nextIndex];
   newState.teamB.players[nextIndex] = temp;
