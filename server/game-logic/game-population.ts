@@ -217,21 +217,14 @@ function handleBump(state: GameState, playerIndex: number): MoveResult {
 function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult {
   const teamSize = state.config.maxPlayersPerTeam;
 
-  // Test logging to verify array state
-  console.log('Array State Check:', {
-    teamA: {
-      length: state.teamA.players.length,
-      players: state.teamA.players.map((p, i) => `Index ${i} (display as ${i+1}): ${p.username}`)
-    },
-    teamB: {
-      length: state.teamB.players.length,
-      players: state.teamB.players.map((p, i) => `Index ${i} (display as ${i+5}): ${p.username}`)
-    },
-    input: {
-      playerIndex,
-      teamSize,
-      isHomeTeam: playerIndex < teamSize
-    }
+  // Debug raw input
+  console.log('RAW INPUT:', {
+    playerIndex,
+    teamSize,
+    homeTeamCount: state.teamA.players.length,
+    awayTeamCount: state.teamB.players.length,
+    homeTeam: state.teamA.players.map(p => p.username),
+    awayTeam: state.teamB.players.map(p => p.username)
   });
 
   if (playerIndex >= teamSize * 2) {
@@ -244,26 +237,22 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
 
   const newState = JSON.parse(JSON.stringify(state));
 
-  // Calculate indices
-  const sourceIndex = playerIndex < teamSize ? playerIndex : playerIndex - teamSize;
+  // Calculate array position (0-3)
+  const position = playerIndex < teamSize ? playerIndex : playerIndex - teamSize;
 
-  // Log the exact swap we're about to do
-  console.log('Swap Details:', {
-    sourceIndex,
-    homePlayer: {
-      username: state.teamA.players[sourceIndex].username,
-      displayNumber: sourceIndex + 1
-    },
-    awayPlayer: {
-      username: state.teamB.players[sourceIndex].username,
-      displayNumber: sourceIndex + 5
-    }
+  console.log('CALCULATED POSITIONS:', {
+    rawPlayerIndex: playerIndex,
+    calculatedPosition: position,
+    homePlayerName: state.teamA.players[position]?.username,
+    awayPlayerName: state.teamB.players[position]?.username,
+    displayHomeNumber: position + 1,
+    displayAwayNumber: position + 5
   });
 
-  // Perform the swap
-  const temp = newState.teamA.players[sourceIndex];
-  newState.teamA.players[sourceIndex] = newState.teamB.players[sourceIndex];
-  newState.teamB.players[sourceIndex] = temp;
+  // Simple swap
+  const temp = newState.teamA.players[position];
+  newState.teamA.players[position] = newState.teamB.players[position];
+  newState.teamB.players[position] = temp;
 
   newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
   newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
@@ -281,17 +270,12 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
 function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   const teamSize = state.config.maxPlayersPerTeam;
 
-  // Test logging to verify array state
-  console.log('Array State Check:', {
-    awayTeam: {
-      length: state.teamB.players.length,
-      players: state.teamB.players.map((p, i) => `Index ${i} (display as ${i+5}): ${p.username}`)
-    },
-    input: {
-      playerIndex,
-      teamSize,
-      currentPos: playerIndex - teamSize
-    }
+  // Debug raw input
+  console.log('RAW INPUT:', {
+    playerIndex,
+    teamSize,
+    awayTeamCount: state.teamB.players.length,
+    awayTeam: state.teamB.players.map(p => p.username)
   });
 
   if (playerIndex < teamSize || playerIndex >= teamSize * 2) {
@@ -304,25 +288,21 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
 
   const newState = JSON.parse(JSON.stringify(state));
 
-  // Calculate indices
+  // Calculate positions
   const currentPos = playerIndex - teamSize;
   const nextPos = (currentPos + 1) % state.teamB.players.length;
 
-  // Log the exact swap we're about to do
-  console.log('Swap Details:', {
-    currentPos,
-    nextPos,
-    currentPlayer: {
-      username: state.teamB.players[currentPos].username,
-      displayNumber: currentPos + 5
-    },
-    nextPlayer: {
-      username: state.teamB.players[nextPos].username,
-      displayNumber: nextPos + 5
-    }
+  console.log('CALCULATED POSITIONS:', {
+    rawPlayerIndex: playerIndex,
+    currentPosition: currentPos,
+    nextPosition: nextPos,
+    currentPlayerName: state.teamB.players[currentPos]?.username,
+    nextPlayerName: state.teamB.players[nextPos]?.username,
+    displayCurrentNumber: currentPos + 5,
+    displayNextNumber: nextPos + 5
   });
 
-  // Perform the swap
+  // Simple swap
   const temp = newState.teamB.players[currentPos];
   newState.teamB.players[currentPos] = newState.teamB.players[nextPos];
   newState.teamB.players[nextPos] = temp;

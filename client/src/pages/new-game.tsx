@@ -190,7 +190,12 @@ export default function NewGamePage() {
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => {
-              console.log('Swap clicked:', player.userId, isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP');
+              console.log(isAway ? 'Vertical Swap - Frontend:' : 'Horizontal Swap - Frontend:', {
+                userId: player.userId,
+                isHome: !isAway,
+                displayNumber: isAway ? index + homePlayers.length + 1 : index + 1,
+                calculatedIndex: index
+              });
               playerMoveMutation.mutate({
                 playerId: player.userId,
                 moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
