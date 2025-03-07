@@ -153,7 +153,7 @@ export default function NewGamePage() {
           'bg-white text-black'
     }`}>
       <div className="flex items-center gap-4">
-        <span className="font-mono text-lg">{index + 1}</span>
+        <span className="font-mono text-lg">{isAway ? index + homePlayers.length + 1 : index + 1}</span>
         <span>{player.username}</span>
       </div>
       <div className="flex items-center gap-2">
@@ -190,12 +190,19 @@ export default function NewGamePage() {
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => {
+              // For horizontal swap: send array index directly
+              // For vertical swap: send array index + teamSize
+              const playerIndex = isAway ? 
+                index + activeGameSet!.playersPerTeam : 
+                index;
+
               console.log(isAway ? 'Vertical Swap - Frontend:' : 'Horizontal Swap - Frontend:', {
                 userId: player.userId,
                 isHome: !isAway,
                 displayNumber: isAway ? index + homePlayers.length + 1 : index + 1,
-                calculatedIndex: index
+                calculatedIndex: playerIndex
               });
+
               playerMoveMutation.mutate({
                 playerId: player.userId,
                 moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
@@ -275,7 +282,7 @@ export default function NewGamePage() {
                           <PlayerCard
                             key={player.id}
                             player={player}
-                            index={index + homePlayers.length}
+                            index={index}
                             isAway
                           />
                         ))}
@@ -303,7 +310,7 @@ export default function NewGamePage() {
                             <PlayerCard
                               key={player.id}
                               player={player}
-                              index={index + playersNeeded}
+                              index={index}
                               isNextUp
                             />
                           ))}

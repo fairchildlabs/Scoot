@@ -223,21 +223,20 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
     teamSize,
     homeTeamCount: state.teamA.players.length,
     awayTeamCount: state.teamB.players.length,
-    homeTeam: state.teamA.players.map(p => p.username),
-    awayTeam: state.teamB.players.map(p => p.username)
+    homeTeam: state.teamA.players.map(p => p.username)
   });
 
   if (playerIndex >= teamSize * 2) {
     return {
       success: false,
-      message: "Cannot swap Next Up players horizontally",
+      message: "Can only swap players on teams",
       updatedState: state
     };
   }
 
   const newState = JSON.parse(JSON.stringify(state));
 
-  // Calculate array position (0-3)
+  // Calculate position for swap (0-based array index)
   const position = playerIndex < teamSize ? playerIndex : playerIndex - teamSize;
 
   console.log('CALCULATED POSITIONS:', {
@@ -254,6 +253,7 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
   newState.teamA.players[position] = newState.teamB.players[position];
   newState.teamB.players[position] = temp;
 
+  // Update OG counts
   newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
   newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
 
@@ -288,9 +288,9 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
 
   const newState = JSON.parse(JSON.stringify(state));
 
-  // Calculate positions
-  const currentPos = playerIndex - teamSize;
-  const nextPos = (currentPos + 1) % state.teamB.players.length;
+  // Calculate array indices
+  const currentPos = playerIndex - teamSize;  // Convert to Away team array index
+  const nextPos = (currentPos + 1) % teamSize;  // Wrap around team size
 
   console.log('CALCULATED POSITIONS:', {
     rawPlayerIndex: playerIndex,
@@ -307,6 +307,7 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   newState.teamB.players[currentPos] = newState.teamB.players[nextPos];
   newState.teamB.players[nextPos] = temp;
 
+  // Update OG count
   newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
 
   return {
