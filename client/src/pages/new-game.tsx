@@ -31,10 +31,12 @@ export default function NewGamePage() {
     enabled: !!user,
   });
 
-  // Get checked-in players
+  // Get checked-in players with proper typing
   const { data: checkins = [], isLoading: checkinsLoading } = useQuery({
     queryKey: ["/api/checkins"],
     enabled: !!user,
+    staleTime: 0, // Always refetch when requested
+    refetchOnWindowFocus: true // Refetch when window regains focus
   });
 
   const createGameMutation = useMutation({
@@ -91,11 +93,13 @@ export default function NewGamePage() {
         }
       }
 
-      // Force a refresh of the checkins data
+      // Immediately invalidate and refetch checkins
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["/api/checkins"] });
-      }, 100);
+      // Force an immediate refetch
+      queryClient.refetchQueries({ 
+        queryKey: ["/api/checkins"],
+        exact: true
+      });
     },
     onError: (error: Error) => {
       setSwapStatus(`Error: ${error.message}`);
