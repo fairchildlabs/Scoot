@@ -458,12 +458,18 @@ function isValidGameState(state: GameState): boolean {
  * Public API
  */
 
-// Initialize game state with correct team size
+// Change the populateGame function to use game set configuration
 export async function populateGame(setId: number): Promise<GameState> {
-  // Initialize game state with default config
+  // Get the active game set configuration
+  const gameSet = await storage.getActiveGameSet();
+  if (!gameSet) {
+    throw new Error("No active game set found");
+  }
+
+  // Use game set configuration values
   const config: GameConfig = {
-    minPlayersPerTeam: 3,
-    maxPlayersPerTeam: 4,  // Changed from 5 to 4
+    minPlayersPerTeam: Math.max(3, gameSet.playersPerTeam - 1), // Allow one less than configured
+    maxPlayersPerTeam: gameSet.playersPerTeam,
     maxConsecutiveLosses: 2,
     courtPreference: ['West', 'East']
   };
