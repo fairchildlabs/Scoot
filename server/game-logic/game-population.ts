@@ -39,33 +39,41 @@ export function initializeGameState(config: GameConfig): GameState {
 /**
  * Move a player according to the specified move type
  */
-export function movePlayer(state: GameState, playerId: number, moveType: MoveType): MoveResult {
-  const playerIndex = findPlayerIndex(state, playerId);
-  if (playerIndex === -1) {
+export function movePlayer(state: GameState, playerIndex: number, moveType: MoveType): MoveResult {
+  console.log('movePlayer - Starting with:', {
+    playerIndex,
+    moveType,
+    teamASize: state.teamA.players.length,
+    teamBSize: state.teamB.players.length,
+    availableSize: state.availablePlayers.length
+  });
+
+  try {
+    let newState = JSON.parse(JSON.stringify(state)); // Deep clone to avoid mutations
+
+    switch (moveType) {
+      case MoveType.CHECKOUT:
+        return handleCheckout(newState, playerIndex);
+      case MoveType.BUMP:
+        return handleBump(newState, playerIndex);
+      case MoveType.HORIZONTAL_SWAP:
+        return handleHorizontalSwap(newState, playerIndex);
+      case MoveType.VERTICAL_SWAP:
+        return handleVerticalSwap(newState, playerIndex);
+      default:
+        return {
+          success: false,
+          message: "Invalid move type",
+          updatedState: state
+        };
+    }
+  } catch (error) {
+    console.error('movePlayer failed:', error);
     return {
       success: false,
-      message: "Player not found",
+      message: error instanceof Error ? error.message : "Unknown error",
       updatedState: state
     };
-  }
-
-  let newState = JSON.parse(JSON.stringify(state)); // Deep clone to avoid mutations
-
-  switch (moveType) {
-    case MoveType.CHECKOUT:
-      return handleCheckout(newState, playerIndex);
-    case MoveType.BUMP:
-      return handleBump(newState, playerIndex);
-    case MoveType.HORIZONTAL_SWAP:
-      return handleHorizontalSwap(newState, playerIndex);
-    case MoveType.VERTICAL_SWAP:
-      return handleVerticalSwap(newState, playerIndex);
-    default:
-      return {
-        success: false,
-        message: "Invalid move type",
-        updatedState: state
-      };
   }
 }
 
@@ -212,7 +220,6 @@ function handleBump(state: GameState, playerIndex: number): MoveResult {
 
 /**
  * Handle horizontal swap between teams
- * Example: #1 swaps with #5, #2 with #6, etc.
  */
 function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult {
   const teamSize = state.config.maxPlayersPerTeam;
@@ -279,7 +286,6 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
 
 /**
  * Handle vertical swap within Away team
- * Example: #5->6, #6->7, #7->8, #8->5
  */
 function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   const teamSize = state.config.maxPlayersPerTeam;

@@ -78,10 +78,14 @@ export default function NewGamePage() {
     mutationFn: async ({ playerId, moveType }: { playerId: number; moveType: string }) => {
       if (!activeGameSet) throw new Error("No active game set");
 
+      // Calculate player index based on their position in the checkins array
+      const playerIndex = checkins.findIndex(c => c.userId === playerId);
+
       const res = await apiRequest("POST", "/api/player-move", {
         playerId,
         moveType,
-        setId: activeGameSet.id
+        setId: activeGameSet.id,
+        playerIndex // Send the actual index to the backend
       });
 
       if (!res.ok) {
