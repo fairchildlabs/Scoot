@@ -80,9 +80,9 @@ export default function NewGamePage() {
     },
     onSuccess: (_, variables) => {
       // Update swap status message
-      const player = checkins.find(c => c.userId === variables.playerId);
+      const player = checkins.find((c: any) => c.userId === variables.playerId);
       if (player) {
-        const displayNumber = checkins.findIndex(c => c.userId === variables.playerId) + 1;
+        const displayNumber = checkins.findIndex((c: any) => c.userId === variables.playerId) + 1;
         if (variables.moveType === 'HORIZONTAL_SWAP') {
           setSwapStatus(`Home ${displayNumber} swapped with Away ${displayNumber + 4}`);
         } else if (variables.moveType === 'VERTICAL_SWAP') {
@@ -102,7 +102,7 @@ export default function NewGamePage() {
     }
   });
 
-  const isLoading = playerMoveMutation.isPending;
+  const isLoading = playerMoveMutation.isPending || createGameMutation.isPending;
 
   if (gameSetLoading || checkinsLoading) {
     return (
@@ -135,23 +135,20 @@ export default function NewGamePage() {
 
   // PlayerCard component with responsive layout
   const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
-    <div className={`flex flex-col gap-2 p-4 rounded-md ${
+    <div className={`flex items-center justify-between p-4 rounded-md sm:flex-col ${
       isNextUp ? 'bg-secondary/30 text-white' :
         isAway ? 'bg-black text-white border border-white' :
           'bg-white text-black'
     }`}>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2 sm:justify-between sm:w-full">
         <span className="font-mono text-lg">{isAway ? index + homePlayers.length + 1 : index + 1}</span>
+        <span className="font-medium">{player.username}</span>
         {isOG(player.birthYear) && (
           <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
         )}
       </div>
 
-      <div className="text-center">
-        <span className="font-medium">{player.username}</span>
-      </div>
-
-      <div className="flex justify-center gap-2">
+      <div className="flex items-center gap-2 sm:justify-center sm:mt-2">
         <Button
           size="icon"
           variant="outline"
@@ -220,8 +217,9 @@ export default function NewGamePage() {
               </div>
             ) : (
               <div className="space-y-6">
+                {/* Status Message */}
                 {swapStatus && (
-                  <div className="bg-primary/10 text-primary p-3 rounded-md text-center">
+                  <div className="bg-destructive/20 text-destructive p-3 rounded-md text-center font-medium">
                     {swapStatus}
                   </div>
                 )}
@@ -246,7 +244,7 @@ export default function NewGamePage() {
                       <CardTitle className="text-white">Home</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
                         {homePlayers.map((player: any, index: number) => (
                           <PlayerCard key={player.id} player={player} index={index} />
                         ))}
@@ -260,7 +258,7 @@ export default function NewGamePage() {
                       <CardTitle className="text-white">Away</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
                         {awayPlayers.map((player: any, index: number) => (
                           <PlayerCard
                             key={player.id}
@@ -277,7 +275,7 @@ export default function NewGamePage() {
                 <Button
                   className="w-full border border-white"
                   onClick={() => createGameMutation.mutate()}
-                  disabled={createGameMutation.isPending}
+                  disabled={isLoading}
                 >
                   {createGameMutation.isPending ? "Creating..." : "Create Game"}
                 </Button>
