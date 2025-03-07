@@ -31,12 +31,13 @@ export default function NewGamePage() {
     enabled: !!user,
   });
 
-  // Get checked-in players with proper typing
+  // Get checked-in players with immediate updates
   const { data: checkins = [], isLoading: checkinsLoading } = useQuery({
     queryKey: ["/api/checkins"],
     enabled: !!user,
-    staleTime: 0, // Always refetch when requested
-    refetchOnWindowFocus: true // Refetch when window regains focus
+    staleTime: 0,
+    refetchInterval: 0,
+    refetchOnWindowFocus: true
   });
 
   const createGameMutation = useMutation({
@@ -80,7 +81,7 @@ export default function NewGamePage() {
       }
       return await res.json();
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       // Update swap status message
       const player = checkins.find((c: any) => c.userId === variables.playerId);
       if (player) {
@@ -93,12 +94,12 @@ export default function NewGamePage() {
         }
       }
 
-      // Immediately invalidate and refetch checkins
-      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-      // Force an immediate refetch
-      queryClient.refetchQueries({ 
+      // Force immediate data refresh
+      await queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      await queryClient.refetchQueries({ 
         queryKey: ["/api/checkins"],
-        exact: true
+        exact: true,
+        type: 'active'
       });
     },
     onError: (error: Error) => {

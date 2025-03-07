@@ -289,16 +289,16 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
     currentIndex,
     nextIndex,
     currentPlayer: {
-      name: state.teamB.players[currentIndex].username,
+      name: state.teamB.players[currentIndex]?.username,
       display: currentIndex + 5
     },
     nextPlayer: {
-      name: state.teamB.players[nextIndex].username,
+      name: state.teamB.players[nextIndex]?.username,
       display: nextIndex + 5
     }
   });
 
-  // Swap current player with next position
+  // Swap players at these positions
   const temp = newState.teamB.players[currentIndex];
   newState.teamB.players[currentIndex] = newState.teamB.players[nextIndex];
   newState.teamB.players[nextIndex] = temp;
