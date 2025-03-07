@@ -12,6 +12,15 @@ import { useState } from "react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { type InsertGame } from "@shared/schema";
 
+type Checkin = {
+  id: number;
+  userId: number;
+  username: string;
+  birthYear?: number;
+  checkInTime: string;
+  isActive: boolean;
+};
+
 const courtOptions = ['West', 'East'] as const;
 
 export default function NewGamePage() {
@@ -31,13 +40,13 @@ export default function NewGamePage() {
     enabled: !!user,
   });
 
-  // Get checked-in players with immediate updates
-  const { data: checkins = [], isLoading: checkinsLoading } = useQuery({
+  // Get checked-in players with proper typing and immediate updates
+  const { data: checkins = [], isLoading: checkinsLoading } = useQuery<Checkin[]>({
     queryKey: ["/api/checkins"],
     enabled: !!user,
     staleTime: 0,
-    cacheTime: 0,
-    refetchInterval: 0
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
   });
 
   const createGameMutation = useMutation({
@@ -66,7 +75,7 @@ export default function NewGamePage() {
   });
 
   const playerMoveMutation = useMutation({
-    mutationFn: async ({ playerId, moveType }: { playerId: number, moveType: string }) => {
+    mutationFn: async ({ playerId, moveType }: { playerId: number; moveType: string }) => {
       if (!activeGameSet) throw new Error("No active game set");
 
       const res = await apiRequest("POST", "/api/player-move", {
@@ -83,9 +92,9 @@ export default function NewGamePage() {
     },
     onSuccess: async (_, variables) => {
       // Update swap status message
-      const player = checkins.find((c: any) => c.userId === variables.playerId);
+      const player = checkins.find((c: Checkin) => c.userId === variables.playerId);
       if (player) {
-        const displayNumber = checkins.findIndex((c: any) => c.userId === variables.playerId) + 1;
+        const displayNumber = checkins.findIndex((c: Checkin) => c.userId === variables.playerId) + 1;
         if (variables.moveType === 'HORIZONTAL_SWAP') {
           setSwapStatus(`Home ${displayNumber} swapped with Away ${displayNumber + 4}`);
         } else if (variables.moveType === 'VERTICAL_SWAP') {
@@ -96,7 +105,7 @@ export default function NewGamePage() {
 
       // Force immediate data refresh
       await queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-      await queryClient.refetchQueries({ 
+      await queryClient.refetchQueries({
         queryKey: ["/api/checkins"],
         exact: true,
         type: 'active'
@@ -138,22 +147,21 @@ export default function NewGamePage() {
     return (currentYear - birthYear) >= 75;
   };
 
-  // PlayerCard component with responsive layout
-  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
-    <div className={`flex items-center justify-between p-4 rounded-md sm:flex-col ${
+  // PlayerCard component with clean layout
+  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: Checkin; index: number; isNextUp?: boolean; isAway?: boolean }) => (
+    <div className={`flex items-center justify-between p-4 rounded-md ${
       isNextUp ? 'bg-secondary/30 text-white' :
         isAway ? 'bg-black text-white border border-white' :
           'bg-white text-black'
     }`}>
-      <div className="flex items-center gap-2 sm:justify-between sm:w-full">
-        <span className="font-mono text-lg">{isAway ? index + homePlayers.length + 1 : index + 1}</span>
-        <span className="font-medium">{player.username}</span>
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-lg min-w-[24px]">{isAway ? index + homePlayers.length + 1 : index + 1}</span>
+        <span className="font-medium truncate max-w-[120px]">{player.username}</span>
         {isOG(player.birthYear) && (
           <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
         )}
       </div>
-
-      <div className="flex items-center gap-2 sm:justify-center sm:mt-2">
+      <div className="flex items-center gap-2">
         <Button
           size="icon"
           variant="outline"
@@ -242,6 +250,7 @@ export default function NewGamePage() {
                   </div>
                 </div>
 
+                {/* Teams Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Home Team */}
                   <Card className="bg-black/20 border border-white">
@@ -250,7 +259,7 @@ export default function NewGamePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {homePlayers.map((player: any, index: number) => (
+                        {homePlayers.map((player: Checkin, index: number) => (
                           <PlayerCard key={player.id} player={player} index={index} />
                         ))}
                       </div>
@@ -264,7 +273,7 @@ export default function NewGamePage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {awayPlayers.map((player: any, index: number) => (
+                        {awayPlayers.map((player: Checkin, index: number) => (
                           <PlayerCard
                             key={player.id}
                             player={player}
@@ -292,7 +301,7 @@ export default function NewGamePage() {
                     <Card className="bg-black/10">
                       <CardContent className="pt-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {nextUpPlayers.map((player: any, index: number) => (
+                          {nextUpPlayers.map((player: Checkin, index: number) => (
                             <PlayerCard
                               key={player.id}
                               player={player}

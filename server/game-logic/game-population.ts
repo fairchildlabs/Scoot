@@ -217,46 +217,64 @@ function handleBump(state: GameState, playerIndex: number): MoveResult {
 function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult {
   const teamSize = state.config.maxPlayersPerTeam;
 
-  // Only allow swaps for players on teams
-  if (playerIndex >= teamSize * 2) {
+  try {
+    // Only allow swaps for players on teams
+    if (playerIndex >= teamSize * 2) {
+      return {
+        success: false,
+        message: "Can only swap players on teams",
+        updatedState: state
+      };
+    }
+
+    const newState = JSON.parse(JSON.stringify(state));
+
+    // Calculate the swap position (0-based index)
+    const swapIndex = playerIndex < teamSize ? playerIndex : playerIndex - teamSize;
+
+    // Validate indices and players exist
+    if (!newState.teamA.players[swapIndex] || !newState.teamB.players[swapIndex]) {
+      console.log('Invalid swap positions:', {
+        swapIndex,
+        teamALength: newState.teamA.players.length,
+        teamBLength: newState.teamB.players.length,
+        teamAPlayer: newState.teamA.players[swapIndex]?.username,
+        teamBPlayer: newState.teamB.players[swapIndex]?.username
+      });
+      return {
+        success: false,
+        message: "Invalid swap positions",
+        updatedState: state
+      };
+    }
+
+    // Perform the swap
+    const temp = newState.teamA.players[swapIndex];
+    newState.teamA.players[swapIndex] = newState.teamB.players[swapIndex];
+    newState.teamB.players[swapIndex] = temp;
+
+    // Update OG counts
+    newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
+    newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
+
+    console.log('Horizontal swap successful:', {
+      swapIndex,
+      playerABefore: temp.username,
+      playerBBefore: newState.teamA.players[swapIndex].username
+    });
+
+    return {
+      success: true,
+      updatedState: newState
+    };
+  } catch (error) {
+    console.error('Horizontal swap failed:', error);
     return {
       success: false,
-      message: "Can only swap players on teams",
+      message: `Swap failed: ${error.message}`,
       updatedState: state
     };
   }
-
-  const newState = JSON.parse(JSON.stringify(state));
-
-  // Calculate the swap position (0-based index)
-  const swapIndex = playerIndex < teamSize ? playerIndex : playerIndex - teamSize;
-
-  console.log('Horizontal Swap:', {
-    playerIndex,
-    swapIndex,
-    homePlayer: {
-      name: state.teamA.players[swapIndex]?.username,
-      display: swapIndex + 1
-    },
-    awayPlayer: {
-      name: state.teamB.players[swapIndex]?.username,
-      display: swapIndex + 5
-    }
-  });
-
-  // Perform the swap
-  const temp = newState.teamA.players[swapIndex];
-  newState.teamA.players[swapIndex] = newState.teamB.players[swapIndex];
-  newState.teamB.players[swapIndex] = temp;
-
-  // Update OG counts
-  newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
-  newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
-
-  return {
-    success: true,
-    updatedState: newState
-  };
 }
 
 /**
@@ -266,48 +284,66 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
 function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
   const teamSize = state.config.maxPlayersPerTeam;
 
-  // Only allow vertical swaps for Away team players
-  if (playerIndex < teamSize || playerIndex >= teamSize * 2) {
+  try {
+    // Only allow vertical swaps for Away team players
+    if (playerIndex < teamSize || playerIndex >= teamSize * 2) {
+      return {
+        success: false,
+        message: "Can only swap Away team players vertically",
+        updatedState: state
+      };
+    }
+
+    const newState = JSON.parse(JSON.stringify(state));
+
+    // Convert to Away team array index (0-based)
+    const currentIndex = playerIndex - teamSize;
+    // Next position wraps around team size
+    const nextIndex = (currentIndex + 1) % teamSize;
+
+    // Validate indices and players exist
+    if (!newState.teamB.players[currentIndex] || !newState.teamB.players[nextIndex]) {
+      console.log('Invalid vertical swap positions:', {
+        currentIndex,
+        nextIndex,
+        teamBLength: newState.teamB.players.length,
+        currentPlayer: newState.teamB.players[currentIndex]?.username,
+        nextPlayer: newState.teamB.players[nextIndex]?.username
+      });
+      return {
+        success: false,
+        message: "Invalid swap positions",
+        updatedState: state
+      };
+    }
+
+    // Perform the swap
+    const temp = newState.teamB.players[currentIndex];
+    newState.teamB.players[currentIndex] = newState.teamB.players[nextIndex];
+    newState.teamB.players[nextIndex] = temp;
+
+    // Update OG count
+    newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
+
+    console.log('Vertical swap successful:', {
+      currentIndex,
+      nextIndex,
+      playerBefore: temp.username,
+      playerAfter: newState.teamB.players[currentIndex].username
+    });
+
+    return {
+      success: true,
+      updatedState: newState
+    };
+  } catch (error) {
+    console.error('Vertical swap failed:', error);
     return {
       success: false,
-      message: "Can only swap Away team players vertically",
+      message: `Swap failed: ${error.message}`,
       updatedState: state
     };
   }
-
-  const newState = JSON.parse(JSON.stringify(state));
-
-  // Convert to Away team array index (0-based)
-  const currentIndex = playerIndex - teamSize;
-  // Next position wraps around team size
-  const nextIndex = (currentIndex + 1) % teamSize;
-
-  console.log('Vertical Swap:', {
-    playerIndex,
-    currentIndex,
-    nextIndex,
-    currentPlayer: {
-      name: state.teamB.players[currentIndex]?.username,
-      display: currentIndex + 5
-    },
-    nextPlayer: {
-      name: state.teamB.players[nextIndex]?.username,
-      display: nextIndex + 5
-    }
-  });
-
-  // Perform the swap
-  const temp = newState.teamB.players[currentIndex];
-  newState.teamB.players[currentIndex] = newState.teamB.players[nextIndex];
-  newState.teamB.players[nextIndex] = temp;
-
-  // Update OG count
-  newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
-
-  return {
-    success: true,
-    updatedState: newState
-  };
 }
 
 /**
