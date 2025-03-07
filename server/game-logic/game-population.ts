@@ -228,9 +228,7 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
 
   const newState = JSON.parse(JSON.stringify(state));
 
-  // We always want to swap at the same array index in both teams
-  // If player is from home team, use their index
-  // If player is from away team, subtract teamSize to get equivalent home index
+  // Calculate the swap position (0-based index)
   const swapIndex = playerIndex < teamSize ? playerIndex : playerIndex - teamSize;
 
   console.log('Horizontal Swap:', {
@@ -246,7 +244,7 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
     }
   });
 
-  // Swap players at the same index in both teams
+  // Perform the swap
   const temp = newState.teamA.players[swapIndex];
   newState.teamA.players[swapIndex] = newState.teamB.players[swapIndex];
   newState.teamB.players[swapIndex] = temp;
@@ -298,7 +296,7 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
     }
   });
 
-  // Swap current player with next position
+  // Perform the swap
   const temp = newState.teamB.players[currentIndex];
   newState.teamB.players[currentIndex] = newState.teamB.players[nextIndex];
   newState.teamB.players[nextIndex] = temp;

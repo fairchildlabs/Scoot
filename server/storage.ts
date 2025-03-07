@@ -209,9 +209,9 @@ export class DatabaseStorage implements IStorage {
 
     // Create new checkins for players in order based on game state
     const allPlayers = [
-      ...gameState.teamA.players,
-      ...gameState.teamB.players,
-      ...gameState.availablePlayers
+      ...gameState.teamA.players,  // First 4 spots (1-4)
+      ...gameState.teamB.players,  // Next 4 spots (5-8)
+      ...gameState.availablePlayers  // Remaining spots (9+)
     ];
 
     // Create checkins one by one to maintain order
