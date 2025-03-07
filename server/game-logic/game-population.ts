@@ -222,29 +222,24 @@ function handleHorizontalSwap(state: GameState, playerIndex: number): MoveResult
     };
   }
 
-  console.log('Horizontal Swap - Input:', {
-    playerIndex,
-    teamSize,
-    isHomeTeam: playerIndex < teamSize,
-    displayNumber: playerIndex < teamSize ? playerIndex + 1 : playerIndex - teamSize + 5,
-    allPlayers: {
-      home: state.teamA.players.map((p, i) => `${i+1}:${p.username}`),
-      away: state.teamB.players.map((p, i) => `${i+5}:${p.username}`)
-    }
-  });
-
   const newState = JSON.parse(JSON.stringify(state));
+
+  // Calculate position for swap (0-based array index)
   const position = playerIndex < teamSize ? playerIndex : playerIndex - teamSize;
 
-  console.log('Horizontal Swap - Will swap:', {
+  console.log('Horizontal Swap - Debug:', {
+    playerIndex,
+    teamSize,
     position,
-    displayHomeNumber: position + 1,
-    displayAwayNumber: position + 5,
-    homePlayer: state.teamA.players[position].username,
-    awayPlayer: state.teamB.players[position].username
+    isHomeTeam: playerIndex < teamSize,
+    displayNumber: playerIndex < teamSize ? position + 1 : position + 5,
+    homeTeam: state.teamA.players.map((p, i) => `${i+1}:${p.username}`),
+    awayTeam: state.teamB.players.map((p, i) => `${i+5}:${p.username}`),
+    swappingHome: state.teamA.players[position]?.username,
+    swappingAway: state.teamB.players[position]?.username
   });
 
-  // Perform the swap
+  // Simple swap at the same position
   const temp = newState.teamA.players[position];
   newState.teamA.players[position] = newState.teamB.players[position];
   newState.teamB.players[position] = temp;
@@ -271,24 +266,25 @@ function handleVerticalSwap(state: GameState, playerIndex: number): MoveResult {
     };
   }
 
-  console.log('Vertical Swap - Input:', {
+  const newState = JSON.parse(JSON.stringify(state));
+
+  // Get current position in Away team (0-based array index)
+  const currentPos = playerIndex - teamSize;
+
+  // For last position (#8, index 3), wrap to first position (#5, index 0)
+  // Otherwise move to next position
+  const nextPos = currentPos === (teamSize - 1) ? 0 : currentPos + 1;
+
+  console.log('Vertical Swap - Debug:', {
     playerIndex,
     teamSize,
-    displayNumber: playerIndex - teamSize + 5,
-    allAwayPlayers: state.teamB.players.map((p, i) => `${i+5}:${p.username}`)
-  });
-
-  const newState = JSON.parse(JSON.stringify(state));
-  const currentPos = playerIndex - teamSize;
-  const nextPos = currentPos === teamSize - 1 ? 0 : currentPos + 1;
-
-  console.log('Vertical Swap - Will swap:', {
     currentPos,
     nextPos,
     displayCurrentNumber: currentPos + 5,
     displayNextNumber: nextPos + 5,
-    currentPlayer: state.teamB.players[currentPos].username,
-    nextPlayer: state.teamB.players[nextPos].username
+    awayTeam: state.teamB.players.map((p, i) => `${i+5}:${p.username}`),
+    swappingCurrent: state.teamB.players[currentPos]?.username,
+    swappingNext: state.teamB.players[nextPos]?.username
   });
 
   // Perform the swap
