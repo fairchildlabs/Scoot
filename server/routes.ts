@@ -109,9 +109,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const { team1Score, team2Score } = req.body;
+      const gameId = parseInt(req.params.id);
+
+      // Get the current game with player info
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ error: "Game not found" });
+      }
+
+      // Get the game set to check max consecutive wins
+      const gameSet = await storage.getActiveGameSet();
+      if (!gameSet) {
+        return res.status(404).json({ error: "Active game set not found" });
+      }
 
       // Update game with scores and set state to 'final'
-      const [game] = await db
+      const [updatedGame] = await db
         .update(games)
         .set({
           team1Score,
@@ -119,10 +132,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
           endTime: new Date(),
           state: 'final'
         })
-        .where(eq(games.id, parseInt(req.params.id)))
+        .where(eq(games.id, gameId))
         .returning();
 
-      res.json(game);
+      // Determine winning and losing teams
+      const winningTeam = team1Score > team2Score ? 1 : 2;
+      const losingTeam = winningTeam === 1 ? 2 : 1;
+
+      // Get players from both teams
+      const winningPlayers = game.players.filter(p => p.team === winningTeam);
+      const losingPlayers = game.players.filter(p => p.team === losingTeam);
+
+      // Get all active checkins
+      const currentCheckins = await storage.getCheckins(34);
+
+      // Reset all current checkins
+      for (const checkin of currentCheckins) {
+        await storage.deactivateCheckin(checkin.id);
+      }
+
+      // Get consecutive wins for the winning team
+      const previousGames = await db
+        .select()
+        .from(games)
+        .where(
+          and(
+            eq(games.setId, gameSet.id),
+            eq(games.state, 'final')
+          )
+        );
+
+      let consecutiveWins = 1;
+      for (let i = previousGames.length - 1; i >= 0; i--) {
+        const prevGame = previousGames[i];
+        const prevWinningTeam = prevGame.team1Score! > prevGame.team2Score! ? 1 : 2;
+        if (prevWinningTeam === winningTeam) {
+          consecutiveWins++;
+        } else {
+          break;
+        }
+      }
+
+      // Determine which players go back to queue
+      const playersToQueue = consecutiveWins >= gameSet.maxConsecutiveTeamWins
+        ? winningPlayers
+        : losingPlayers;
+
+      // Create new checkins for players going back to queue
+      for (const player of playersToQueue) {
+        await storage.createCheckin(player.userId, 34);
+      }
+
+      res.json(updatedGame);
     } catch (error) {
       console.error('PATCH /api/games/:id/score - Error:', error);
       res.status(500).json({ error: (error as Error).message });

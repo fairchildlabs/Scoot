@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   isBook: boolean("is_book").notNull().default(false),
   isEngineer: boolean("is_engineer").notNull().default(false),
   isRoot: boolean("is_root").notNull().default(false),
+  autoup: boolean("autoup").notNull().default(true),
 });
 
 export const gameSets = pgTable("game_sets", {
