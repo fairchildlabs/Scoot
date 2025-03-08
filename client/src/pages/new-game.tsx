@@ -8,18 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Redirect, useLocation } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { type InsertGame } from "@shared/schema";
 
-const courtOptions = ['West', 'East'] as const;
-
 const NewGamePage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [selectedCourt, setSelectedCourt] = useState<typeof courtOptions[number]>('West');
+  const [selectedCourt, setSelectedCourt] = useState<string>("1");
   const [statusMessage, setStatusMessage] = useState<string>('');
 
   // Only allow engineers and root users
@@ -211,6 +210,43 @@ const NewGamePage = () => {
     </div>
   );
 
+  // Generate court selection UI based on number of courts
+  const CourtSelection = () => {
+    const numberOfCourts = activeGameSet?.numberOfCourts || 1;
+
+    if (numberOfCourts === 1) {
+      return (
+        <div className="flex items-center justify-center gap-4 bg-white rounded-lg p-4">
+          <Label className="text-black">Court #1</Label>
+        </div>
+      );
+    }
+
+    return (
+      <RadioGroup
+        value={selectedCourt}
+        onValueChange={setSelectedCourt}
+        className="flex items-center justify-center gap-4 bg-white rounded-lg p-4"
+      >
+        {Array.from({ length: numberOfCourts }, (_, i) => i + 1).map((courtNumber) => (
+          <div key={courtNumber} className="flex items-center space-x-2">
+            <RadioGroupItem
+              value={courtNumber.toString()}
+              id={`court-${courtNumber}`}
+              className="text-black border-2 border-black data-[state=checked]:bg-black data-[state=checked]:border-black"
+            />
+            <Label
+              htmlFor={`court-${courtNumber}`}
+              className="text-black"
+            >
+              Court #{courtNumber}
+            </Label>
+          </div>
+        ))}
+      </RadioGroup>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -240,15 +276,7 @@ const NewGamePage = () => {
               <div className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Select Court</h3>
-                  <div className="flex items-center justify-center gap-4 bg-white rounded-lg p-4">
-                    <Label className="text-black">West Court</Label>
-                    <Switch
-                      checked={selectedCourt === 'East'}
-                      onCheckedChange={(checked) => setSelectedCourt(checked ? 'East' : 'West')}
-                      className="data-[state=checked]:bg-black data-[state=unchecked]:bg-black [&>span]:bg-white [&>span]:border-2 [&>span]:border-black"
-                    />
-                    <Label className="text-black">East Court</Label>
-                  </div>
+                  <CourtSelection />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

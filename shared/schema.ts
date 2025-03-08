@@ -32,6 +32,7 @@ export const gameSets = pgTable("game_sets", {
   winScore: integer("win_score").notNull().default(21),
   pointSystem: text("point_system").notNull().default('2s and 3s'),
   isActive: boolean("is_active").notNull().default(true),
+  numberOfCourts: integer("number_of_courts").notNull().default(2),
 });
 
 export const games = pgTable("games", {
@@ -42,7 +43,7 @@ export const games = pgTable("games", {
   team1Score: integer("team1_score"),
   team2Score: integer("team2_score"),
   clubIndex: integer("club_index").notNull().default(34),
-  court: text("court").notNull().default('West'),
+  court: text("court").notNull(),  // Changed from default('West') to accept any court number
 });
 
 export const checkins = pgTable("checkins", {
@@ -90,6 +91,7 @@ export const insertGameSetSchema = createInsertSchema(gameSets, {
   timeLimit: z.number().min(5).max(60),
   winScore: z.number().min(1),
   pointSystem: z.enum(['1s only', '2s only', '2s and 3s']),
+  numberOfCourts: z.number().min(1).max(10),
 }).omit({
   id: true,
   createdAt: true,
@@ -101,7 +103,7 @@ export const insertGameSetSchema = createInsertSchema(gameSets, {
 export const insertGameSchema = createInsertSchema(games, {
   setId: z.number(),
   startTime: z.string(),
-  court: z.enum(['East', 'West']),
+  court: z.string(),  // Changed from enum to string to accept court numbers
 }).omit({
   id: true,
   endTime: true,
