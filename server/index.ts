@@ -6,6 +6,11 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Add an unprotected test route
+app.get('/test', (_req, res) => {
+  res.send('Hello World - Test Route');
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -47,16 +52,12 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Try to serve the app on port 5000, fall back to another port if needed
   const tryPort = (port: number): Promise<number> => {
     return new Promise((resolve, reject) => {
       const tryServer = server.listen({
@@ -66,7 +67,7 @@ app.use((req, res, next) => {
       }, () => {
         resolve(port);
       });
-      
+
       tryServer.on('error', (err: any) => {
         if (err.code === 'EADDRINUSE') {
           log(`Port ${port} is in use, trying port ${port + 1}`);
@@ -77,7 +78,7 @@ app.use((req, res, next) => {
       });
     });
   };
-  
+
   tryPort(5000).then(usedPort => {
     log(`serving on port ${usedPort}`);
   }).catch(err => {
