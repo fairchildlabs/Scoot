@@ -16,6 +16,11 @@ export default function HomePage() {
     enabled: !!user,
   });
 
+  const { data: checkins = [], isLoading: checkinsLoading } = useQuery({
+    queryKey: ["/api/checkins"],
+    enabled: !!user,
+  });
+
   const { data: activeGames = [], isLoading: gamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games/active"],
     enabled: !!user,
@@ -24,7 +29,7 @@ export default function HomePage() {
     },
   });
 
-  if (gameSetLoading || gamesLoading) {
+  if (gameSetLoading || gamesLoading || checkinsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -44,6 +49,10 @@ export default function HomePage() {
     if (!birthYear) return false;
     return (currentYear - birthYear) >= 75;
   };
+
+  // Calculate number of players needed based on game set
+  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
+  const nextUpPlayers = checkins?.slice(playersNeeded) || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -134,6 +143,26 @@ export default function HomePage() {
                       </Card>
                     ))}
                 </div>
+
+                {/* Next Up Section */}
+                {nextUpPlayers.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-medium mb-4">Next Up</h3>
+                    <div className="space-y-2">
+                      {nextUpPlayers.map((player: any, index: number) => (
+                        <div key={player.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/30">
+                          <div className="flex items-center gap-4">
+                            <span className="font-mono text-lg">{index + playersNeeded + 1}</span>
+                            <span>{player.username}</span>
+                          </div>
+                          {isOG(player.birthYear) && (
+                            <span className="text-white font-bold">OG</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
