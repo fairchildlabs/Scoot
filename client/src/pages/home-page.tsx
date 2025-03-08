@@ -7,9 +7,13 @@ import { Loader2 } from "lucide-react";
 import { ScootLogo } from "@/components/logos/scoot-logo";
 import { format } from "date-fns";
 import { type GameSet, type Game } from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 export default function HomePage() {
   const { user } = useAuth();
+  const [gameScores, setGameScores] = useState<Record<number, { showInputs: boolean; team1Score?: number; team2Score?: number }>>({});
 
   const { data: activeGameSet, isLoading: gameSetLoading } = useQuery<GameSet>({
     queryKey: ["/api/game-sets/active"],
@@ -54,6 +58,69 @@ export default function HomePage() {
   const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
   const nextUpPlayers = checkins?.slice(playersNeeded) || [];
 
+  // Check if user has permission to end games
+  const canEndGames = user?.isRoot || user?.isEngineer;
+
+  const toggleScoreInputs = (gameId: number) => {
+    setGameScores(prev => ({
+      ...prev,
+      [gameId]: {
+        showInputs: !prev[gameId]?.showInputs,
+        team1Score: prev[gameId]?.team1Score,
+        team2Score: prev[gameId]?.team2Score
+      }
+    }));
+  };
+
+  const updateScore = (gameId: number, team: 'team1Score' | 'team2Score', value: string) => {
+    const numValue = parseInt(value);
+    if (!isNaN(numValue)) {
+      setGameScores(prev => ({
+        ...prev,
+        [gameId]: {
+          ...prev[gameId],
+          [team]: numValue
+        }
+      }));
+    }
+  };
+
+  const handleEndGame = async (gameId: number) => {
+    const scores = gameScores[gameId];
+    if (scores?.team1Score === undefined || scores?.team2Score === undefined) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/games/${gameId}/score`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          team1Score: scores.team1Score,
+          team2Score: scores.team2Score,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update game score');
+      }
+
+      // Reset the score inputs for this game
+      setGameScores(prev => ({
+        ...prev,
+        [gameId]: {
+          showInputs: false,
+          team1Score: undefined,
+          team2Score: undefined
+        }
+      }));
+    } catch (error) {
+      console.error('Error ending game:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -90,9 +157,20 @@ export default function HomePage() {
                         <CardHeader className="pb-2">
                           <CardTitle className="text-lg flex items-center justify-between">
                             <span>Game #{game.id} - Court {game.court}</span>
-                            <span className="text-sm font-normal text-muted-foreground">
-                              {format(new Date(game.startTime), 'h:mm a')}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-normal text-muted-foreground">
+                                {format(new Date(game.startTime), 'h:mm a')}
+                              </span>
+                              {canEndGames && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => toggleScoreInputs(game.id)}
+                                >
+                                  End Game
+                                </Button>
+                              )}
+                            </div>
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -115,6 +193,17 @@ export default function HomePage() {
                                       </div>
                                     ))}
                                 </div>
+                                {gameScores[game.id]?.showInputs && (
+                                  <div className="mt-4">
+                                    <Input
+                                      type="number"
+                                      placeholder="Home Score"
+                                      value={gameScores[game.id]?.team1Score || ''}
+                                      onChange={(e) => updateScore(game.id, 'team1Score', e.target.value)}
+                                      className="w-full"
+                                    />
+                                  </div>
+                                )}
                               </CardContent>
                             </Card>
 
@@ -136,9 +225,33 @@ export default function HomePage() {
                                       </div>
                                     ))}
                                 </div>
+                                {gameScores[game.id]?.showInputs && (
+                                  <div className="mt-4">
+                                    <Input
+                                      type="number"
+                                      placeholder="Away Score"
+                                      value={gameScores[game.id]?.team2Score || ''}
+                                      onChange={(e) => updateScore(game.id, 'team2Score', e.target.value)}
+                                      className="w-full bg-white text-black"
+                                    />
+                                  </div>
+                                )}
                               </CardContent>
                             </Card>
                           </div>
+                          {gameScores[game.id]?.showInputs && (
+                            <div className="mt-4 flex justify-end">
+                              <Button
+                                onClick={() => handleEndGame(game.id)}
+                                disabled={
+                                  gameScores[game.id]?.team1Score === undefined ||
+                                  gameScores[game.id]?.team2Score === undefined
+                                }
+                              >
+                                Submit Scores
+                              </Button>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
