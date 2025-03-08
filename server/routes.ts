@@ -139,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const winningTeam = team1Score > team2Score ? 1 : 2;
       const losingTeam = winningTeam === 1 ? 2 : 1;
 
-      // Get players from both teams
+      // Get all players from both teams
       const winningPlayers = game.players.filter(p => p.team === winningTeam);
       const losingPlayers = game.players.filter(p => p.team === losingTeam);
 
@@ -178,17 +178,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? winningPlayers
         : losingPlayers;
 
-      // Create new checkins only for players with autoup=true
+      // Create new checkins for players going back to queue
       for (const player of playersToQueue) {
         const user = await storage.getUser(player.userId);
         if (user?.autoup) {
-          // Check if player already has an active checkin
-          const existingCheckins = await storage.getCheckins(34);
-          const hasActiveCheckin = existingCheckins.some(c => c.userId === player.userId);
-
-          if (!hasActiveCheckin) {
-            await storage.createCheckin(player.userId, 34);
-          }
+          await storage.createCheckin(player.userId, 34);
         }
       }
 
@@ -197,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         winningTeam,
         losingTeam,
         consecutiveWins,
-        playersToQueue: playersToQueue.map(p => p.userId)
+        playersToQueue: playersToQueue.map(p => p.username)
       });
 
       res.json(updatedGame);
