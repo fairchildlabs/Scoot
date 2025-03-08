@@ -44,6 +44,7 @@ export const games = pgTable("games", {
   team2Score: integer("team2_score"),
   clubIndex: integer("club_index").notNull().default(34),
   court: text("court").notNull(),  // Changed from default('West') to accept any court number
+  state: text("state").notNull().default('started'),  // Added state field with values 'started' or 'final'
 });
 
 export const checkins = pgTable("checkins", {
@@ -104,6 +105,7 @@ export const insertGameSchema = createInsertSchema(games, {
   setId: z.number(),
   startTime: z.string(),
   court: z.string(),  // Changed from enum to string to accept court numbers
+  state: z.enum(['started', 'final']).default('started'),  // Added state field
 }).omit({
   id: true,
   endTime: true,

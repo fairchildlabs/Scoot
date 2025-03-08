@@ -48,6 +48,7 @@ const NewGamePage = () => {
         setId: Number(activeGameSet.id),
         startTime: new Date().toISOString(),
         court: selectedCourt,
+        state: 'started'  // Add state when creating game
       };
 
       const res = await apiRequest("POST", "/api/games", gameData);

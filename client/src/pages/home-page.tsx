@@ -94,6 +94,9 @@ export default function HomePage() {
                       <CardHeader>
                         <CardTitle className="text-lg">
                           Game #{game.id} - Court #{game.court}
+                          <span className="ml-2 text-sm font-normal text-muted-foreground">
+                            ({game.state})
+                          </span>
                         </CardTitle>
                         <p className="text-sm text-muted-foreground">
                           Started {format(new Date(game.startTime), 'h:mm a')}
