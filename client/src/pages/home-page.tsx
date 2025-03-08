@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ScootLogo } from "@/components/logos/scoot-logo";
 import { format } from "date-fns";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 
 export default function HomePage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [gameScores, setGameScores] = useState<Record<number, { showInputs: boolean; team1Score?: number; team2Score?: number }>>({});
 
   const { data: activeGameSet, isLoading: gameSetLoading } = useQuery<GameSet>({
@@ -107,6 +108,9 @@ export default function HomePage() {
         throw new Error('Failed to update game score');
       }
 
+      // Immediately refetch the games data
+      queryClient.invalidateQueries(["/api/games/active"]);
+
       // Reset the score inputs for this game
       setGameScores(prev => ({
         ...prev,
@@ -120,6 +124,128 @@ export default function HomePage() {
       console.error('Error ending game:', error);
     }
   };
+
+  const renderGameCard = (game: any, showScoreInputs = true) => (
+    <Card key={game.id} className="bg-secondary/20">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center justify-between">
+          <span>Game #{game.id} - Court {game.court}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-normal text-muted-foreground">
+              {format(new Date(game.startTime), 'h:mm a')}
+            </span>
+            {showScoreInputs && canEndGames && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleScoreInputs(game.id)}
+              >
+                End Game
+              </Button>
+            )}
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Home Team */}
+          <Card className="bg-white text-black">
+            <CardHeader className="py-2">
+              <CardTitle className="text-sm font-medium">
+                Home
+                {game.state === 'final' && (
+                  <span className="ml-2 text-primary font-bold">
+                    {game.team1Score}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {game.players
+                  ?.filter((p: any) => p.team === 1)
+                  .map((p: any) => (
+                    <div key={p.id} className="p-2 rounded-md text-sm bg-secondary/10">
+                      <span>{p.username}</span>
+                      {isOG(p.birthYear) && (
+                        <span className="ml-2 text-primary font-bold">OG</span>
+                      )}
+                    </div>
+                  ))}
+              </div>
+              {gameScores[game.id]?.showInputs && (
+                <div className="mt-4">
+                  <Input
+                    type="number"
+                    placeholder="Home Score"
+                    value={gameScores[game.id]?.team1Score || ''}
+                    onChange={(e) => updateScore(game.id, 'team1Score', e.target.value)}
+                    className="w-full bg-white text-black"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Away Team */}
+          <Card className="bg-black text-white border border-white">
+            <CardHeader className="py-2">
+              <CardTitle className="text-sm font-medium">
+                Away
+                {game.state === 'final' && (
+                  <span className="ml-2 text-white font-bold">
+                    {game.team2Score}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {game.players
+                  ?.filter((p: any) => p.team === 2)
+                  .map((p: any) => (
+                    <div key={p.id} className="p-2 rounded-md text-sm bg-white/10">
+                      <span>{p.username}</span>
+                      {isOG(p.birthYear) && (
+                        <span className="ml-2 text-white font-bold">OG</span>
+                      )}
+                    </div>
+                  ))}
+              </div>
+              {gameScores[game.id]?.showInputs && (
+                <div className="mt-4">
+                  <Input
+                    type="number"
+                    placeholder="Away Score"
+                    value={gameScores[game.id]?.team2Score || ''}
+                    onChange={(e) => updateScore(game.id, 'team2Score', e.target.value)}
+                    className="w-full bg-white text-black"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        {gameScores[game.id]?.showInputs && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={() => handleEndGame(game.id)}
+              disabled={
+                gameScores[game.id]?.team1Score === undefined ||
+                gameScores[game.id]?.team2Score === undefined
+              }
+            >
+              Submit Scores
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  // Separate active and finished games
+  const activeGamesList = activeGames.filter(game => game.state === 'started');
+  const finishedGamesList = activeGames.filter(game => game.state === 'final');
 
   return (
     <div className="min-h-screen bg-background">
@@ -148,113 +274,8 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {/* Current Games */}
-                  {activeGames
-                    .filter(game => game.state === 'started')
-                    .slice(0, activeGameSet?.numberOfCourts || 0)
-                    .map((game: any) => (
-                      <Card key={game.id} className="bg-secondary/20">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-lg flex items-center justify-between">
-                            <span>Game #{game.id} - Court {game.court}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-normal text-muted-foreground">
-                                {format(new Date(game.startTime), 'h:mm a')}
-                              </span>
-                              {canEndGames && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => toggleScoreInputs(game.id)}
-                                >
-                                  End Game
-                                </Button>
-                              )}
-                            </div>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-2 gap-4">
-                            {/* Home Team */}
-                            <Card className="bg-white text-black">
-                              <CardHeader className="py-2">
-                                <CardTitle className="text-sm font-medium">Home</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="space-y-2">
-                                  {game.players
-                                    ?.filter((p: any) => p.team === 1)
-                                    .map((p: any) => (
-                                      <div key={p.id} className="p-2 rounded-md text-sm bg-secondary/10">
-                                        <span>{p.username}</span>
-                                        {isOG(p.birthYear) && (
-                                          <span className="ml-2 text-primary font-bold">OG</span>
-                                        )}
-                                      </div>
-                                    ))}
-                                </div>
-                                {gameScores[game.id]?.showInputs && (
-                                  <div className="mt-4">
-                                    <Input
-                                      type="number"
-                                      placeholder="Home Score"
-                                      value={gameScores[game.id]?.team1Score || ''}
-                                      onChange={(e) => updateScore(game.id, 'team1Score', e.target.value)}
-                                      className="w-full bg-white text-black"
-                                    />
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-
-                            {/* Away Team */}
-                            <Card className="bg-black text-white border border-white">
-                              <CardHeader className="py-2">
-                                <CardTitle className="text-sm font-medium">Away</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="space-y-2">
-                                  {game.players
-                                    ?.filter((p: any) => p.team === 2)
-                                    .map((p: any) => (
-                                      <div key={p.id} className="p-2 rounded-md text-sm bg-white/10">
-                                        <span>{p.username}</span>
-                                        {isOG(p.birthYear) && (
-                                          <span className="ml-2 text-white font-bold">OG</span>
-                                        )}
-                                      </div>
-                                    ))}
-                                </div>
-                                {gameScores[game.id]?.showInputs && (
-                                  <div className="mt-4">
-                                    <Input
-                                      type="number"
-                                      placeholder="Away Score"
-                                      value={gameScores[game.id]?.team2Score || ''}
-                                      onChange={(e) => updateScore(game.id, 'team2Score', e.target.value)}
-                                      className="w-full bg-white text-black"
-                                    />
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </div>
-                          {gameScores[game.id]?.showInputs && (
-                            <div className="mt-4 flex justify-end">
-                              <Button
-                                onClick={() => handleEndGame(game.id)}
-                                disabled={
-                                  gameScores[game.id]?.team1Score === undefined ||
-                                  gameScores[game.id]?.team2Score === undefined
-                                }
-                              >
-                                Submit Scores
-                              </Button>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
+                  {/* Active Games */}
+                  {activeGamesList.map(game => renderGameCard(game))}
                 </div>
 
                 {/* Next Up Section */}
@@ -273,6 +294,16 @@ export default function HomePage() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Finished Games */}
+                {finishedGamesList.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-medium mb-4">Completed Games</h3>
+                    <div className="space-y-6">
+                      {finishedGamesList.map(game => renderGameCard(game, false))}
                     </div>
                   </div>
                 )}
