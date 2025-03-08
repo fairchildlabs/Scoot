@@ -143,14 +143,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const winningPlayers = game.players.filter(p => p.team === winningTeam);
       const losingPlayers = game.players.filter(p => p.team === losingTeam);
 
-      // Get all active checkins
-      const currentCheckins = await storage.getCheckins(34);
-
-      // Reset all current checkins
-      for (const checkin of currentCheckins) {
-        await storage.deactivateCheckin(checkin.id);
-      }
-
       // Get consecutive wins for the winning team
       const previousGames = await db
         .select()
@@ -173,15 +165,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Get complete user data for all players to check autoup status
+      const players = await Promise.all(
+        game.players.map(async (player) => {
+          const user = await storage.getUser(player.userId);
+          return { ...player, autoup: user?.autoup };
+        })
+      );
+
       // Determine which players go back to queue
       const playersToQueue = consecutiveWins >= gameSet.maxConsecutiveTeamWins
         ? winningPlayers
         : losingPlayers;
 
-      // Create new checkins for players going back to queue
+      // Create new checkins only for players with autoup=true
       for (const player of playersToQueue) {
-        await storage.createCheckin(player.userId, 34);
+        const user = await storage.getUser(player.userId);
+        if (user?.autoup) {
+          // Check if player already has an active checkin
+          const existingCheckins = await storage.getCheckins(34);
+          const hasActiveCheckin = existingCheckins.some(c => c.userId === player.userId);
+
+          if (!hasActiveCheckin) {
+            await storage.createCheckin(player.userId, 34);
+          }
+        }
       }
+
+      console.log('Game ended:', {
+        gameId,
+        winningTeam,
+        losingTeam,
+        consecutiveWins,
+        playersToQueue: playersToQueue.map(p => p.userId)
+      });
 
       res.json(updatedGame);
     } catch (error) {
