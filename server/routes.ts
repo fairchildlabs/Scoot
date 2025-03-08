@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { insertGameSetSchema, games } from "@shared/schema";
 import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -198,13 +198,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Get active game set to know how many games to return
       const activeGameSet = await storage.getActiveGameSet();
+      if (!activeGameSet) {
+        return res.json([]);
+      }
 
-      // Get all active games
+      // Get all active games from the current game set
       const activeGames = await db
         .select()
         .from(games)
-        .where(eq(games.state, 'started'))
-        .limit(activeGameSet?.numberOfCourts || 1);
+        .where(
+          and(
+            eq(games.state, 'started'),
+            eq(games.setId, activeGameSet.id)
+          )
+        )
+        .limit(activeGameSet.numberOfCourts);
 
       // Get complete game data with players for each game
       const gamesWithPlayers = await Promise.all(
