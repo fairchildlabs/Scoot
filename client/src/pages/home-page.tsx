@@ -16,11 +16,6 @@ export default function HomePage() {
     enabled: !!user,
   });
 
-  const { data: checkins = [], isLoading: checkinsLoading } = useQuery({
-    queryKey: ["/api/checkins"],
-    enabled: !!user,
-  });
-
   const { data: activeGames = [], isLoading: gamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games/active"],
     enabled: !!user,
@@ -29,7 +24,7 @@ export default function HomePage() {
     },
   });
 
-  if (checkinsLoading || gameSetLoading || gamesLoading) {
+  if (gameSetLoading || gamesLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -42,10 +37,6 @@ export default function HomePage() {
       </div>
     );
   }
-
-  // Calculate number of players needed based on game set
-  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
-  const nextUpPlayers = checkins?.slice(playersNeeded) || [];
 
   // Calculate current year for OG status
   const currentYear = new Date().getFullYear();
@@ -61,7 +52,6 @@ export default function HomePage() {
         <div className="flex flex-col items-center justify-center space-y-4">
           <ScootLogo className="h-24 w-24 text-primary" />
           <div className="w-full max-w-2xl space-y-4">
-            {/* Game Set Info */}
             <Card>
               <CardHeader>
                 <CardTitle>
@@ -82,28 +72,25 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {/* Active Games */}
+                  {/* Current Games */}
                   {activeGames
                     .filter(game => game.state === 'started')
                     .slice(0, activeGameSet?.numberOfCourts || 0)
                     .map((game: any) => (
-                      <Card key={game.id} className="bg-black/20 border border-white">
-                        <CardHeader>
-                          <CardTitle className="text-lg">
-                            Game #{game.id} - Court #{game.court}
-                            <span className="ml-2 text-sm font-normal text-muted-foreground">
-                              ({game.state})
+                      <Card key={game.id} className="bg-secondary/20">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-lg flex items-center justify-between">
+                            <span>Game #{game.id} - Court {game.court}</span>
+                            <span className="text-sm font-normal text-muted-foreground">
+                              {format(new Date(game.startTime), 'h:mm a')}
                             </span>
                           </CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            Started {format(new Date(game.startTime), 'h:mm a')}
-                          </p>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-2 gap-4">
                             {/* Home Team */}
                             <Card className="bg-white text-black">
-                              <CardHeader>
+                              <CardHeader className="py-2">
                                 <CardTitle className="text-sm font-medium">Home</CardTitle>
                               </CardHeader>
                               <CardContent>
@@ -111,7 +98,7 @@ export default function HomePage() {
                                   {game.players
                                     ?.filter((p: any) => p.team === 1)
                                     .map((p: any) => (
-                                      <div key={p.id} className="p-2 rounded-md text-sm">
+                                      <div key={p.id} className="p-2 rounded-md text-sm bg-secondary/10">
                                         <span>{p.username}</span>
                                         {isOG(p.birthYear) && (
                                           <span className="ml-2 text-primary font-bold">OG</span>
@@ -124,7 +111,7 @@ export default function HomePage() {
 
                             {/* Away Team */}
                             <Card className="bg-black text-white border border-white">
-                              <CardHeader>
+                              <CardHeader className="py-2">
                                 <CardTitle className="text-sm font-medium">Away</CardTitle>
                               </CardHeader>
                               <CardContent>
@@ -132,7 +119,7 @@ export default function HomePage() {
                                   {game.players
                                     ?.filter((p: any) => p.team === 2)
                                     .map((p: any) => (
-                                      <div key={p.id} className="p-2 rounded-md text-sm">
+                                      <div key={p.id} className="p-2 rounded-md text-sm bg-white/10">
                                         <span>{p.username}</span>
                                         {isOG(p.birthYear) && (
                                           <span className="ml-2 text-white font-bold">OG</span>
@@ -147,7 +134,6 @@ export default function HomePage() {
                       </Card>
                     ))}
                 </div>
-
               </CardContent>
             </Card>
           </div>
