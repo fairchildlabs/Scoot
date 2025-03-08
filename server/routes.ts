@@ -107,14 +107,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.user!.isEngineer) return res.sendStatus(403);
 
-    const { team1Score, team2Score } = req.body;
-    const game = await storage.updateGameScore(
-      parseInt(req.params.id),
-      team1Score,
-      team2Score
-    );
+    try {
+      const { team1Score, team2Score } = req.body;
 
-    res.json(game);
+      // Update game with scores and set state to 'final'
+      const [game] = await db
+        .update(games)
+        .set({
+          team1Score,
+          team2Score,
+          endTime: new Date(),
+          state: 'final'
+        })
+        .where(eq(games.id, parseInt(req.params.id)))
+        .returning();
+
+      res.json(game);
+    } catch (error) {
+      console.error('PATCH /api/games/:id/score - Error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
   });
 
   app.post("/api/game-sets", async (req, res) => {

@@ -200,7 +200,7 @@ export default function HomePage() {
                                       placeholder="Home Score"
                                       value={gameScores[game.id]?.team1Score || ''}
                                       onChange={(e) => updateScore(game.id, 'team1Score', e.target.value)}
-                                      className="w-full"
+                                      className="w-full bg-white text-black"
                                     />
                                   </div>
                                 )}
