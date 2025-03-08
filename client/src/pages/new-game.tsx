@@ -97,7 +97,7 @@ const NewGamePage = () => {
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: ["/api/checkins"] });
       }, 100);
-      setStatusMessage(`Player (queue position #${data.playerNumber}) moved successfully`);
+      setStatusMessage(`Player #${data.playerNumber} moved successfully`);
     },
     onError: (error: Error) => {
       console.error('Player move failed:', error);
