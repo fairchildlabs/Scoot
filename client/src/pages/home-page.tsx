@@ -118,17 +118,18 @@ export default function HomePage() {
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 gap-4">
+                          {/* Home Team - White Background */}
                           <Card className="bg-white text-black">
                             <CardHeader>
                               <CardTitle className="text-sm font-medium">Home</CardTitle>
                             </CardHeader>
                             <CardContent>
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 {game.players
                                   ?.filter((p: any) => p.team === 1)
                                   .map((p: any) => (
-                                    <div key={p.id} className="text-sm">
-                                      {p.username}
+                                    <div key={p.id} className="p-2 rounded-md text-sm">
+                                      <span>{p.username}</span>
                                       {isOG(p.birthYear) && (
                                         <span className="ml-2 text-primary font-bold">OG</span>
                                       )}
@@ -137,17 +138,19 @@ export default function HomePage() {
                               </div>
                             </CardContent>
                           </Card>
+
+                          {/* Away Team - Black Background with White Border */}
                           <Card className="bg-black text-white border border-white">
                             <CardHeader>
                               <CardTitle className="text-sm font-medium">Away</CardTitle>
                             </CardHeader>
                             <CardContent>
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 {game.players
                                   ?.filter((p: any) => p.team === 2)
                                   .map((p: any) => (
-                                    <div key={p.id} className="text-sm">
-                                      {p.username}
+                                    <div key={p.id} className="p-2 rounded-md text-sm">
+                                      <span>{p.username}</span>
                                       {isOG(p.birthYear) && (
                                         <span className="ml-2 text-white font-bold">OG</span>
                                       )}
