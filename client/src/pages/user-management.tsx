@@ -462,6 +462,7 @@ export default function UserManagementPage() {
       timeLimit: 15,
       winScore: 21,
       pointSystem: '2s and 3s' as const,
+      numberOfCourts: 2,
     },
   });
 
@@ -536,6 +537,25 @@ export default function UserManagementPage() {
                     type="number"
                     min={1}
                     max={5}
+                    {...field}
+                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="numberOfCourts"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Number of Courts</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
                     {...field}
                     onChange={(e) => field.onChange(parseInt(e.target.value))}
                   />
