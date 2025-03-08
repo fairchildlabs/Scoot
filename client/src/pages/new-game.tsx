@@ -15,11 +15,12 @@ import { type InsertGame } from "@shared/schema";
 
 const courtOptions = ['West', 'East'] as const;
 
-export default function NewGamePage() {
+const NewGamePage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedCourt, setSelectedCourt] = useState<typeof courtOptions[number]>('West');
+  const [statusMessage, setStatusMessage] = useState<string>('');
 
   // Only allow engineers and root users
   if (!user?.isEngineer && !user?.isRoot) {
@@ -75,7 +76,7 @@ export default function NewGamePage() {
   });
 
   const playerMoveMutation = useMutation({
-    mutationFn: async ({ playerId, moveType }: { playerId: number, moveType: string }) => {
+    mutationFn: async ({ playerId, moveType, playerNumber }: { playerId: number, moveType: string, playerNumber: number }) => {
       if (!activeGameSet) throw new Error("No active game set");
 
       console.log('Making player move:', { playerId, moveType });
@@ -89,27 +90,18 @@ export default function NewGamePage() {
         const errorText = await res.text();
         throw new Error(errorText);
       }
-      return await res.json();
+      return { ...(await res.json()), playerNumber };
     },
-    onSuccess: () => {
-      // Force a refresh of the checkins data
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-      // Add a small delay before refetching to ensure the server has processed the change
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: ["/api/checkins"] });
       }, 100);
-      toast({
-        title: "Success",
-        description: "Player moved successfully"
-      });
+      setStatusMessage(`Player (queue position #${data.playerNumber}) moved successfully`);
     },
     onError: (error: Error) => {
       console.error('Player move failed:', error);
-      toast({
-        title: "Action failed",
-        description: error.message,
-        variant: "destructive"
-      });
+      setStatusMessage(`Error: ${error.message}`);
     }
   });
 
@@ -166,7 +158,8 @@ export default function NewGamePage() {
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
           onClick={() => {
             console.log('Checkout clicked:', player.userId);
-            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT' });
+            const playerNumber = isAway ? index + homePlayers.length + 1 : index + 1;
+            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT', playerNumber });
           }}
           disabled={isLoading}
         >
@@ -178,7 +171,8 @@ export default function NewGamePage() {
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
           onClick={() => {
             console.log('Bump clicked:', player.userId);
-            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP' });
+            const playerNumber = isAway ? index + homePlayers.length + 1 : index + 1;
+            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP', playerNumber });
           }}
           disabled={isLoading}
         >
@@ -190,22 +184,18 @@ export default function NewGamePage() {
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => {
-              // For horizontal swap: send array index directly
-              // For vertical swap: send array index + teamSize
-              const playerIndex = isAway ? 
-                index + activeGameSet!.playersPerTeam : 
-                index;
-
+              const playerNumber = isAway ? index + homePlayers.length + 1 : index + 1;
               console.log(isAway ? 'Vertical Swap - Frontend:' : 'Horizontal Swap - Frontend:', {
                 userId: player.userId,
                 isHome: !isAway,
-                displayNumber: isAway ? index + homePlayers.length + 1 : index + 1,
-                calculatedIndex: playerIndex
+                displayNumber: playerNumber,
+                calculatedIndex: isAway ? index + activeGameSet!.playersPerTeam : index
               });
 
               playerMoveMutation.mutate({
                 playerId: player.userId,
-                moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP'
+                moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP',
+                playerNumber
               });
             }}
             disabled={isLoading}
@@ -228,6 +218,11 @@ export default function NewGamePage() {
         <Card>
           <CardHeader>
             <CardTitle>Create New Game</CardTitle>
+            {statusMessage && (
+              <div className="text-red-500 mt-2 text-sm">
+                {statusMessage}
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {!activeGameSet ? (
@@ -327,4 +322,6 @@ export default function NewGamePage() {
       <Footer />
     </div>
   );
-}
+};
+
+export default NewGamePage;
