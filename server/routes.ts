@@ -74,17 +74,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Missing setId");
       }
 
-      // Use the game population algorithm to assign teams and court
-      const gameState = await populateGame(req.body.setId);
-
-      // Create the game with the selected court
+      // Create the game
       const game = await storage.createGame(
         req.body.setId,
-        gameState.selectedCourt || 'West'
+        req.body.court || 'West',
+        'started'  // Set initial state
       );
 
       console.log('POST /api/games - Created game:', game);
-      res.json(game);
+
+      // Create player associations if provided
+      if (req.body.players && Array.isArray(req.body.players)) {
+        await Promise.all(
+          req.body.players.map(async (player: { userId: number; team: number }) => {
+            await storage.createGamePlayer(game.id, player.userId, player.team);
+          })
+        );
+      }
+
+      // Fetch the complete game data with players
+      const completeGame = await storage.getGame(game.id);
+      res.json(completeGame);
     } catch (error) {
       console.error('POST /api/games - Error:', error);
       res.status(500).json({ error: error.message });

@@ -54,11 +54,11 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto py-10 px-4">
+      <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col items-center justify-center space-y-4">
           <ScootLogo className="h-24 w-24 text-primary" />
           <div className="w-full max-w-2xl space-y-4">
-            {/* Game Set Info */}
+            {/* Game Set Info and Active Games */}
             <Card>
               <CardHeader>
                 <CardTitle>
@@ -78,92 +78,94 @@ export default function HomePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {checkins?.length ? (
-                  <ul className="space-y-2">
-                    {checkins.slice(0, playersNeeded).map((checkin: any, index: number) => (
-                      <li key={checkin.id} className="p-3 bg-secondary rounded flex items-center">
-                        <span className="font-mono text-lg mr-4">{index + 1}</span>
-                        <span>{checkin.username}</span>
-                        {isOG(checkin.birthYear) && (
-                          <span className="ml-2 text-primary font-bold">OG</span>
-                        )}
-                      </li>
+                <div className="space-y-6">
+                  {/* Active Games */}
+                  {activeGames
+                    .filter(game => game.state === 'started')
+                    .slice(0, activeGameSet?.numberOfCourts || 0)
+                    .map((game: Game) => (
+                      <Card key={game.id} className="bg-black/20 border border-white">
+                        <CardHeader>
+                          <CardTitle className="text-lg">
+                            Game #{game.id} - Court #{game.court}
+                            <span className="ml-2 text-sm font-normal text-muted-foreground">
+                              ({game.state})
+                            </span>
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Started {format(new Date(game.startTime), 'h:mm a')}
+                          </p>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Home Team */}
+                            <Card className="bg-white text-black">
+                              <CardHeader>
+                                <CardTitle className="text-sm font-medium">Home</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-2">
+                                  {game.players
+                                    ?.filter((p: any) => p.team === 1)
+                                    .map((p: any) => (
+                                      <div key={p.id} className="p-2 rounded-md text-sm">
+                                        <span>{p.username}</span>
+                                        {isOG(p.birthYear) && (
+                                          <span className="ml-2 text-primary font-bold">OG</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            {/* Away Team */}
+                            <Card className="bg-black text-white border border-white">
+                              <CardHeader>
+                                <CardTitle className="text-sm font-medium">Away</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-2">
+                                  {game.players
+                                    ?.filter((p: any) => p.team === 2)
+                                    .map((p: any) => (
+                                      <div key={p.id} className="p-2 rounded-md text-sm">
+                                        <span>{p.username}</span>
+                                        {isOG(p.birthYear) && (
+                                          <span className="ml-2 text-white font-bold">OG</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </ul>
+                </div>
+
+                {/* Current Queue */}
+                {checkins?.length ? (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-medium mb-4">Current Queue</h3>
+                    <ul className="space-y-2">
+                      {checkins.slice(0, playersNeeded).map((checkin: any, index: number) => (
+                        <li key={checkin.id} className="p-3 bg-secondary rounded flex items-center">
+                          <span className="font-mono text-lg mr-4">{index + 1}</span>
+                          <span>{checkin.username}</span>
+                          {isOG(checkin.birthYear) && (
+                            <span className="ml-2 text-primary font-bold">OG</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : (
                   <p className="text-muted-foreground">No players checked in</p>
                 )}
               </CardContent>
             </Card>
-
-            {/* Active Games */}
-            {activeGames.length > 0 && (
-              <div className="space-y-6">
-                {activeGames
-                  .filter(game => game.state === 'started')
-                  .slice(0, activeGameSet?.numberOfCourts || 0)
-                  .map((game: Game) => (
-                    <Card key={game.id} className="bg-black/20 border border-white">
-                      <CardHeader>
-                        <CardTitle className="text-lg">
-                          Game #{game.id} - Court #{game.court}
-                          <span className="ml-2 text-sm font-normal text-muted-foreground">
-                            ({game.state})
-                          </span>
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          Started {format(new Date(game.startTime), 'h:mm a')}
-                        </p>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Home Team */}
-                          <Card className="bg-white text-black">
-                            <CardHeader>
-                              <CardTitle className="text-sm font-medium">Home</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="space-y-2">
-                                {game.players
-                                  ?.filter((p: any) => p.team === 1)
-                                  .map((p: any) => (
-                                    <div key={p.id} className="p-2 rounded-md text-sm">
-                                      <span>{p.username}</span>
-                                      {isOG(p.birthYear) && (
-                                        <span className="ml-2 text-primary font-bold">OG</span>
-                                      )}
-                                    </div>
-                                  ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          {/* Away Team */}
-                          <Card className="bg-black text-white border border-white">
-                            <CardHeader>
-                              <CardTitle className="text-sm font-medium">Away</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="space-y-2">
-                                {game.players
-                                  ?.filter((p: any) => p.team === 2)
-                                  .map((p: any) => (
-                                    <div key={p.id} className="p-2 rounded-md text-sm">
-                                      <span>{p.username}</span>
-                                      {isOG(p.birthYear) && (
-                                        <span className="ml-2 text-white font-bold">OG</span>
-                                      )}
-                                    </div>
-                                  ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
-            )}
 
             {/* Next Up Section */}
             {nextUpPlayers.length > 0 && (
