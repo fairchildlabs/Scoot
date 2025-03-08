@@ -2,8 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertGameSetSchema } from "@shared/schema";
+import { insertGameSetSchema, games } from "@shared/schema";
 import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -97,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(completeGame);
     } catch (error) {
       console.error('POST /api/games - Error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: (error as Error).message });
     }
   });
 
@@ -135,7 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(gameSet);
     } catch (error) {
       console.error('POST /api/game-sets - Error:', error);
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ error: (error as Error).message });
     }
   });
 
@@ -187,7 +189,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result.updatedState);
     } catch (error: any) {
       console.error('Player move failed:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/api/games/active", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      // Get active game set to know how many games to return
+      const activeGameSet = await storage.getActiveGameSet();
+
+      // Get all active games
+      const activeGames = await db
+        .select()
+        .from(games)
+        .where(eq(games.state, 'started'))
+        .limit(activeGameSet?.numberOfCourts || 1);
+
+      // Get complete game data with players for each game
+      const gamesWithPlayers = await Promise.all(
+        activeGames.map(game => storage.getGame(game.id))
+      );
+
+      console.log('GET /api/games/active - Returning games:', gamesWithPlayers);
+      res.json(gamesWithPlayers);
+    } catch (error) {
+      console.error('GET /api/games/active - Error:', error);
+      res.status(500).json({ error: (error as Error).message });
     }
   });
 

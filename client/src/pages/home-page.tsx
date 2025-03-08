@@ -24,15 +24,18 @@ export default function HomePage() {
   const { data: activeGames = [], isLoading: gamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games/active"],
     enabled: !!user,
+    onSuccess: (data) => {
+      console.log('Active Games Data:', data);
+    },
   });
 
   if (checkinsLoading || gameSetLoading || gamesLoading) {
     return (
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8">
           <div className="flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-white" />
+            <Loader2 className="h-8 w-8 animate-spin text-border" />
           </div>
         </main>
         <Footer />
@@ -58,7 +61,7 @@ export default function HomePage() {
         <div className="flex flex-col items-center justify-center space-y-4">
           <ScootLogo className="h-24 w-24 text-primary" />
           <div className="w-full max-w-2xl space-y-4">
-            {/* Game Set Info and Active Games */}
+            {/* Game Set Info */}
             <Card>
               <CardHeader>
                 <CardTitle>
@@ -73,7 +76,7 @@ export default function HomePage() {
                       </span>
                     </div>
                   ) : (
-                    "Current Queue"
+                    "Current Games"
                   )}
                 </CardTitle>
               </CardHeader>
@@ -83,7 +86,7 @@ export default function HomePage() {
                   {activeGames
                     .filter(game => game.state === 'started')
                     .slice(0, activeGameSet?.numberOfCourts || 0)
-                    .map((game: Game) => (
+                    .map((game: any) => (
                       <Card key={game.id} className="bg-black/20 border border-white">
                         <CardHeader>
                           <CardTitle className="text-lg">
@@ -145,51 +148,8 @@ export default function HomePage() {
                     ))}
                 </div>
 
-                {/* Current Queue */}
-                {checkins?.length ? (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-medium mb-4">Current Queue</h3>
-                    <ul className="space-y-2">
-                      {checkins.slice(0, playersNeeded).map((checkin: any, index: number) => (
-                        <li key={checkin.id} className="p-3 bg-secondary rounded flex items-center">
-                          <span className="font-mono text-lg mr-4">{index + 1}</span>
-                          <span>{checkin.username}</span>
-                          {isOG(checkin.birthYear) && (
-                            <span className="ml-2 text-primary font-bold">OG</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No players checked in</p>
-                )}
               </CardContent>
             </Card>
-
-            {/* Next Up Section */}
-            {nextUpPlayers.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Next Up</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {nextUpPlayers.map((player: any, index: number) => (
-                      <div key={player.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/30">
-                        <div className="flex items-center gap-4">
-                          <span className="font-mono text-lg">{index + playersNeeded + 1}</span>
-                          <span>{player.username}</span>
-                        </div>
-                        {isOG(player.birthYear) && (
-                          <span className="text-white font-bold">OG</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       </main>
