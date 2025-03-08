@@ -40,6 +40,17 @@ export default function HomePage() {
     );
   }
 
+  // Calculate number of players needed based on game set
+  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
+  const nextUpPlayers = checkins?.slice(playersNeeded) || [];
+
+  // Calculate current year for OG status
+  const currentYear = new Date().getFullYear();
+  const isOG = (birthYear?: number) => {
+    if (!birthYear) return false;
+    return (currentYear - birthYear) >= 75;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -69,10 +80,13 @@ export default function HomePage() {
               <CardContent>
                 {checkins?.length ? (
                   <ul className="space-y-2">
-                    {checkins.map((checkin: any, index: number) => (
+                    {checkins.slice(0, playersNeeded).map((checkin: any, index: number) => (
                       <li key={checkin.id} className="p-3 bg-secondary rounded flex items-center">
                         <span className="font-mono text-lg mr-4">{index + 1}</span>
                         <span>{checkin.username}</span>
+                        {isOG(checkin.birthYear) && (
+                          <span className="ml-2 text-primary font-bold">OG</span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -115,6 +129,9 @@ export default function HomePage() {
                                   .map((p: any) => (
                                     <div key={p.id} className="text-sm">
                                       {p.username}
+                                      {isOG(p.birthYear) && (
+                                        <span className="ml-2 text-primary font-bold">OG</span>
+                                      )}
                                     </div>
                                   ))}
                               </div>
@@ -131,6 +148,9 @@ export default function HomePage() {
                                   .map((p: any) => (
                                     <div key={p.id} className="text-sm">
                                       {p.username}
+                                      {isOG(p.birthYear) && (
+                                        <span className="ml-2 text-white font-bold">OG</span>
+                                      )}
                                     </div>
                                   ))}
                               </div>
@@ -140,6 +160,30 @@ export default function HomePage() {
                       </CardContent>
                     </Card>
                   ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Next Up Section */}
+            {nextUpPlayers.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Next Up</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {nextUpPlayers.map((player: any, index: number) => (
+                      <div key={player.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/30">
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono text-lg">{index + playersNeeded + 1}</span>
+                          <span>{player.username}</span>
+                        </div>
+                        {isOG(player.birthYear) && (
+                          <span className="text-white font-bold">OG</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             )}
