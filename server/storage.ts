@@ -27,7 +27,7 @@ export interface IStorage {
   getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]>;
   createCheckin(userId: number, clubIndex: number): Promise<Checkin>;
   deactivateCheckin(checkinId: number): Promise<void>;
-  createGame(setId: number, court: string): Promise<Game>;
+  createGame(setId: number, court: string, state: string): Promise<Game>;
   updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game>;
   getAllUsers(): Promise<User[]>;
   sessionStore: session.Store;
@@ -36,6 +36,8 @@ export interface IStorage {
   getAllGameSets(): Promise<GameSet[]>;
   deactivateGameSet(setId: number): Promise<void>;
   updateCheckins(setId: number, gameState: GameState): Promise<void>;
+  createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer>;
+  getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number })[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -114,14 +116,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(checkins.id, checkinId));
   }
 
-  async createGame(setId: number, court: string): Promise<Game> {
+  async createGame(setId: number, court: string, state: string): Promise<Game> {
     const [game] = await db
       .insert(games)
       .values({
         setId,
         startTime: new Date(),
         clubIndex: 34,
-        court
+        court,
+        state
       })
       .returning();
     return game;
@@ -217,6 +220,43 @@ export class DatabaseStorage implements IStorage {
     for (const player of allPlayers) {
       await this.createCheckin(player.id, 34);
     }
+  }
+
+  async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
+    const [gamePlayer] = await db
+      .insert(gamePlayers)
+      .values({
+        gameId,
+        userId,
+        team
+      })
+      .returning();
+    return gamePlayer;
+  }
+
+  async getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number })[] }> {
+    // Get the game
+    const [game] = await db.select().from(games).where(eq(games.id, gameId));
+    if (!game) throw new Error(`Game ${gameId} not found`);
+
+    // Get all players in this game with their user information
+    const players = await db
+      .select({
+        id: gamePlayers.id,
+        gameId: gamePlayers.gameId,
+        userId: gamePlayers.userId,
+        team: gamePlayers.team,
+        username: users.username,
+        birthYear: users.birthYear
+      })
+      .from(gamePlayers)
+      .innerJoin(users, eq(gamePlayers.userId, users.id))
+      .where(eq(gamePlayers.gameId, gameId));
+
+    return {
+      ...game,
+      players
+    };
   }
 }
 
