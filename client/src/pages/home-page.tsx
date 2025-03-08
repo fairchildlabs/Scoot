@@ -98,12 +98,11 @@ export default function HomePage() {
 
             {/* Active Games */}
             {activeGames.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Games</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {activeGames.map((game: Game) => (
+              <div className="space-y-6">
+                {activeGames
+                  .filter(game => game.state === 'started')
+                  .slice(0, activeGameSet?.numberOfCourts || 0)
+                  .map((game: Game) => (
                     <Card key={game.id} className="bg-black/20 border border-white">
                       <CardHeader>
                         <CardTitle className="text-lg">
@@ -118,7 +117,7 @@ export default function HomePage() {
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 gap-4">
-                          {/* Home Team - White Background */}
+                          {/* Home Team */}
                           <Card className="bg-white text-black">
                             <CardHeader>
                               <CardTitle className="text-sm font-medium">Home</CardTitle>
@@ -139,7 +138,7 @@ export default function HomePage() {
                             </CardContent>
                           </Card>
 
-                          {/* Away Team - Black Background with White Border */}
+                          {/* Away Team */}
                           <Card className="bg-black text-white border border-white">
                             <CardHeader>
                               <CardTitle className="text-sm font-medium">Away</CardTitle>
@@ -163,8 +162,7 @@ export default function HomePage() {
                       </CardContent>
                     </Card>
                   ))}
-                </CardContent>
-              </Card>
+              </div>
             )}
 
             {/* Next Up Section */}

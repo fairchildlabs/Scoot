@@ -44,6 +44,11 @@ const NewGamePage = () => {
         throw new Error("No active game set available");
       }
 
+      // Get current home and away team players
+      const homePlayers = checkins?.slice(0, activeGameSet.playersPerTeam || 0) || [];
+      const awayPlayers = checkins?.slice(activeGameSet.playersPerTeam || 0, playersNeeded) || [];
+
+      // Create game data
       const gameData: InsertGame = {
         setId: Number(activeGameSet.id),
         startTime: new Date().toISOString(),
@@ -51,7 +56,15 @@ const NewGamePage = () => {
         state: 'started'  // Add state when creating game
       };
 
-      const res = await apiRequest("POST", "/api/games", gameData);
+      // Create the game
+      const res = await apiRequest("POST", "/api/games", {
+        ...gameData,
+        players: [
+          ...homePlayers.map(p => ({ userId: p.userId, team: 1 })),
+          ...awayPlayers.map(p => ({ userId: p.userId, team: 2 }))
+        ]
+      });
+
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(errorText);
