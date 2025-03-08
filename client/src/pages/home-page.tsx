@@ -47,57 +47,6 @@ export default function HomePage() {
         <div className="flex flex-col items-center justify-center space-y-4">
           <ScootLogo className="h-24 w-24 text-primary" />
           <div className="w-full max-w-2xl space-y-4">
-            {/* Active Games */}
-            {activeGames.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Games</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {activeGames.map((game: Game) => (
-                    <Card key={game.id} className="bg-secondary">
-                      <CardHeader>
-                        <CardTitle className="text-lg">
-                          Game #{game.id} - {game.court} Court
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          Started {format(new Date(game.startTime), 'h:mm a')}
-                        </p>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="font-medium mb-2">Home</h4>
-                            <div className="space-y-1">
-                              {game.players
-                                ?.filter((p: any) => p.team === 1)
-                                .map((p: any) => (
-                                  <div key={p.id} className="text-sm">
-                                    {p.username}
-                                  </div>
-                                ))}
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="font-medium mb-2">Away</h4>
-                            <div className="space-y-1">
-                              {game.players
-                                ?.filter((p: any) => p.team === 2)
-                                .map((p: any) => (
-                                  <div key={p.id} className="text-sm">
-                                    {p.username}
-                                  </div>
-                                ))}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Game Set Info */}
             <Card>
               <CardHeader>
@@ -109,7 +58,7 @@ export default function HomePage() {
                         Created {format(new Date(activeGameSet.createdAt), 'PPp')}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {activeGameSet.gym} - {activeGameSet.playersPerTeam} players per team
+                        {activeGameSet.gym} - {activeGameSet.playersPerTeam} players per team - {activeGameSet.numberOfCourts} courts
                       </span>
                     </div>
                   ) : (
@@ -132,6 +81,65 @@ export default function HomePage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Active Games */}
+            {activeGames.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Active Games</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {activeGames.map((game: Game) => (
+                    <Card key={game.id} className="bg-black/20 border border-white">
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          Game #{game.id} - Court #{game.court}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Started {format(new Date(game.startTime), 'h:mm a')}
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Card className="bg-white text-black">
+                            <CardHeader>
+                              <CardTitle className="text-sm font-medium">Home</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-1">
+                                {game.players
+                                  ?.filter((p: any) => p.team === 1)
+                                  .map((p: any) => (
+                                    <div key={p.id} className="text-sm">
+                                      {p.username}
+                                    </div>
+                                  ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card className="bg-black text-white border border-white">
+                            <CardHeader>
+                              <CardTitle className="text-sm font-medium">Away</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-1">
+                                {game.players
+                                  ?.filter((p: any) => p.team === 2)
+                                  .map((p: any) => (
+                                    <div key={p.id} className="text-sm">
+                                      {p.username}
+                                    </div>
+                                  ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>
