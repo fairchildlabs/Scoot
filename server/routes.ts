@@ -144,12 +144,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Game not found" });
       }
 
-      // Get the game set to check max consecutive wins
-      const gameSet = await storage.getActiveGameSet();
-      if (!gameSet) {
-        return res.status(404).json({ error: "Active game set not found" });
-      }
-
       // Update game with scores and set state to 'final'
       const [updatedGame] = await db
         .update(games)
@@ -166,61 +160,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const winningTeam = team1Score > team2Score ? 1 : 2;
       const losingTeam = winningTeam === 1 ? 2 : 1;
 
-      // Get all players from both teams
-      const winningPlayers = game.players.filter(p => p.team === winningTeam);
+      // Get all players from the losing team
       const losingPlayers = game.players.filter(p => p.team === losingTeam);
-
-      // Get consecutive wins for the winning team
-      const previousGames = await db
-        .select()
-        .from(games)
-        .where(
-          and(
-            eq(games.setId, gameSet.id),
-            eq(games.state, 'final')
-          )
-        );
-
-      let consecutiveWins = 1;
-      for (let i = previousGames.length - 1; i >= 0; i--) {
-        const prevGame = previousGames[i];
-        const prevWinningTeam = prevGame.team1Score! > prevGame.team2Score! ? 1 : 2;
-        if (prevWinningTeam === winningTeam) {
-          consecutiveWins++;
-        } else {
-          break;
-        }
-      }
-
-      // Get complete user data for all players to check autoup status
-      const players = await Promise.all(
-        game.players.map(async (player) => {
-          const user = await storage.getUser(player.userId);
-          return { ...player, autoup: user?.autoup };
-        })
-      );
-
-      // Determine which players go back to queue based on consecutive wins
-      const playersToQueue = consecutiveWins >= gameSet.maxConsecutiveTeamWins
-        ? winningPlayers  // If team has won max consecutive games, they go to queue
-        : losingPlayers;  // Otherwise, losing team goes to queue
-
-      // Create new checkins for players going back to queue
-      for (const player of playersToQueue) {
-        const user = await storage.getUser(player.userId);
-        if (user?.autoup) {
-          await storage.createCheckin(player.userId, 34);
-        }
-      }
 
       console.log('Game ended:', {
         gameId,
         winningTeam,
         losingTeam,
-        consecutiveWins,
-        maxConsecutiveWins: gameSet.maxConsecutiveTeamWins,
-        playersToQueue: playersToQueue.map(p => p.username)
+        losingPlayers: losingPlayers.map(p => p.username)
       });
+
+      // Create new checkins for losing team players
+      for (const player of losingPlayers) {
+        await storage.createCheckin(player.userId, 34);
+      }
 
       res.json(updatedGame);
     } catch (error) {
