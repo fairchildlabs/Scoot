@@ -187,12 +187,12 @@ export default function HomePage() {
           </Card>
 
           {/* Away Team */}
-          <Card className="bg-white text-black">
+          <Card className="bg-black text-white border border-white">
             <CardHeader className="py-2">
               <CardTitle className="text-sm font-medium">
                 Away
                 {game.state === 'final' && (
-                  <span className="ml-2 text-primary font-bold">
+                  <span className="ml-2 text-white font-bold">
                     {game.team2Score}
                   </span>
                 )}
@@ -203,14 +203,14 @@ export default function HomePage() {
                 {game.players
                   ?.filter((p: any) => p.team === 2)
                   .map((p: any) => (
-                    <div key={p.id} className="p-2 rounded-md text-sm bg-secondary/10">
+                    <div key={p.id} className="p-2 rounded-md text-sm bg-white/10">
                       <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-4">
                           <span className="font-mono text-lg">#{p.queuePosition}</span>
                           <span>{p.username}</span>
                         </div>
                         {isOG(p.birthYear) && (
-                          <span className="text-primary font-bold ml-auto">OG</span>
+                          <span className="text-white font-bold ml-auto">OG</span>
                         )}
                       </div>
                     </div>
