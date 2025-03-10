@@ -12,6 +12,7 @@ import { insertGameSetSchema, type InsertGameSet } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import NewGamePage from "./new-game";
 
 // Add after TabsTrigger imports:
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
@@ -267,7 +268,7 @@ export default function GamesPage() {
                 <NewGameSetForm />
               </TabsContent>
               <TabsContent value="new-game">
-                {/* New Game Form will be added here */}
+                <NewGamePage />
               </TabsContent>
             </Tabs>
           </CardContent>
