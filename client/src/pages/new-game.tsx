@@ -158,7 +158,7 @@ const NewGamePage = () => {
           'bg-white text-black'
     }`}>
       <div className="flex items-center gap-4">
-        <span className="font-mono text-lg">{isAway ? index + homePlayers.length + 1 : index + 1}</span>
+        <span className="font-mono text-lg">#{player.queuePosition}</span>
         <span>{player.username}</span>
       </div>
       <div className="flex items-center gap-2">
@@ -170,8 +170,7 @@ const NewGamePage = () => {
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
           onClick={() => {
-            console.log('Checkout clicked:', player.userId);
-            const playerNumber = isAway ? index + homePlayers.length + 1 : index + 1;
+            const playerNumber = player.queuePosition;
             playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT', playerNumber });
           }}
           disabled={isLoading}
@@ -183,8 +182,7 @@ const NewGamePage = () => {
           variant="outline"
           className="rounded-full h-8 w-8 border-white text-white hover:text-white"
           onClick={() => {
-            console.log('Bump clicked:', player.userId);
-            const playerNumber = isAway ? index + homePlayers.length + 1 : index + 1;
+            const playerNumber = player.queuePosition;
             playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP', playerNumber });
           }}
           disabled={isLoading}
@@ -197,14 +195,7 @@ const NewGamePage = () => {
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => {
-              const playerNumber = isAway ? index + homePlayers.length + 1 : index + 1;
-              console.log(isAway ? 'Vertical Swap - Frontend:' : 'Horizontal Swap - Frontend:', {
-                userId: player.userId,
-                isHome: !isAway,
-                displayNumber: playerNumber,
-                calculatedIndex: isAway ? index + activeGameSet!.playersPerTeam : index
-              });
-
+              const playerNumber = player.queuePosition;
               playerMoveMutation.mutate({
                 playerId: player.userId,
                 moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP',
@@ -267,7 +258,9 @@ const NewGamePage = () => {
       <main className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Create New Game</CardTitle>
+            <CardTitle>
+              {activeGameSet ? `Set #${activeGameSet.id} Roster` : 'Create New Game'}
+            </CardTitle>
             {statusMessage && (
               <div className="text-red-500 mt-2 text-sm">
                 {statusMessage}
