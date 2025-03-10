@@ -119,6 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      console.log('Check-in all completed successfully');
       res.sendStatus(200);
     } catch (error) {
       console.error('POST /api/checkins/check-in-all - Error:', error);

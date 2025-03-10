@@ -138,14 +138,15 @@ export class DatabaseStorage implements IStorage {
         checkInDate: today,
         gameSetId: activeGameSet.id,
         queuePosition: activeGameSet.currentQueuePosition,
+        type: 'manual' // Set the type for manual check-in
       })
       .returning();
 
     // Increment the game set's current queue position
     await db
       .update(gameSets)
-      .set({ 
-        currentQueuePosition: activeGameSet.currentQueuePosition + 1 
+      .set({
+        currentQueuePosition: activeGameSet.currentQueuePosition + 1
       })
       .where(eq(gameSets.id, activeGameSet.id));
 
@@ -203,10 +204,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGameSet(userId: number, gameSet: InsertGameSet): Promise<GameSet> {
+    // First deactivate all existing game sets
     await db
       .update(gameSets)
       .set({ isActive: false })
       .where(eq(gameSets.isActive, true));
+
+    // Deactivate all active checkins
+    await db
+      .update(checkins)
+      .set({ isActive: false })
+      .where(eq(checkins.isActive, true));
 
     const [newGameSet] = await db
       .insert(gameSets)
