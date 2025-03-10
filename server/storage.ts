@@ -80,7 +80,10 @@ export class DatabaseStorage implements IStorage {
         isActive: checkins.isActive,
         clubIndex: checkins.clubIndex,
         checkInDate: checkins.checkInDate,
-        username: users.username
+        queuePosition: checkins.queuePosition,
+        username: users.username,
+        gameSetId: checkins.gameSetId,
+        type: checkins.type
       })
       .from(checkins)
       .innerJoin(users, eq(checkins.userId, users.id))
@@ -90,7 +93,8 @@ export class DatabaseStorage implements IStorage {
           eq(checkins.isActive, true),
           eq(checkins.checkInDate, today)
         )
-      );
+      )
+      .orderBy(checkins.queuePosition);
 
     return results;
   }

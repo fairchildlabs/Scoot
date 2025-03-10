@@ -289,7 +289,7 @@ export default function HomePage() {
                   <div className="mt-8">
                     <h3 className="text-lg font-medium mb-4">Next Up</h3>
                     <div className="space-y-2">
-                      {nextUpPlayers.map((player: any, index: number) => (
+                      {nextUpPlayers.map((player: any) => (
                         <div key={player.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/30">
                           <div className="flex items-center gap-4">
                             <span className="font-mono text-lg">#{player.queuePosition}</span>
