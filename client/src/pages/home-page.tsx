@@ -29,9 +29,6 @@ export default function HomePage() {
   const { data: activeGames = [], isLoading: gamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games/active"],
     enabled: !!user,
-    onSuccess: (data) => {
-      console.log('Active Games Data:', data);
-    },
   });
 
   if (gameSetLoading || gamesLoading || checkinsLoading) {
@@ -55,12 +52,12 @@ export default function HomePage() {
     return (currentYear - birthYear) >= 75;
   };
 
-  // Calculate number of players needed based on game set
-  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
-  const nextUpPlayers = checkins?.slice(playersNeeded) || [];
+  // If there are no active games, all checked in players should be in Next Up
+  const nextUpPlayers = activeGames.length === 0 ? checkins : checkins?.slice(activeGameSet?.playersPerTeam * 2 || 0);
 
-  // Check if user has permission to end games
-  const canEndGames = user?.isRoot || user?.isEngineer;
+  // Separate active and finished games
+  const activeGamesList = activeGames.filter(game => game.state === 'started');
+  const finishedGamesList = activeGames.filter(game => game.state === 'final');
 
   const toggleScoreInputs = (gameId: number) => {
     setGameScores(prev => ({
@@ -108,10 +105,7 @@ export default function HomePage() {
         throw new Error('Failed to update game score');
       }
 
-      // Immediately refetch the games data
-      queryClient.invalidateQueries(["/api/games/active"]);
-
-      // Reset the score inputs for this game
+      queryClient.invalidateQueries({ queryKey: ["/api/games/active"] });
       setGameScores(prev => ({
         ...prev,
         [gameId]: {
@@ -176,7 +170,7 @@ export default function HomePage() {
                     </div>
                   ))}
               </div>
-              {gameScores[game.id]?.showInputs && (
+              {showScoreInputs && gameScores[game.id]?.showInputs && (
                 <div className="mt-4">
                   <Input
                     type="number"
@@ -218,7 +212,7 @@ export default function HomePage() {
                     </div>
                   ))}
               </div>
-              {gameScores[game.id]?.showInputs && (
+              {showScoreInputs && gameScores[game.id]?.showInputs && (
                 <div className="mt-4">
                   <Input
                     type="number"
@@ -232,7 +226,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-        {gameScores[game.id]?.showInputs && (
+        {showScoreInputs && gameScores[game.id]?.showInputs && (
           <div className="mt-4 flex justify-end">
             <Button
               onClick={() => handleEndGame(game.id)}
@@ -249,9 +243,9 @@ export default function HomePage() {
     </Card>
   );
 
-  // Separate active and finished games
-  const activeGamesList = activeGames.filter(game => game.state === 'started');
-  const finishedGamesList = activeGames.filter(game => game.state === 'final');
+
+  // Check if user has permission to end games
+  const canEndGames = user?.isRoot || user?.isEngineer;
 
   return (
     <div className="min-h-screen bg-background">
@@ -282,37 +276,36 @@ export default function HomePage() {
                 <div className="space-y-6">
                   {/* Active Games */}
                   {activeGamesList.map(game => renderGameCard(game))}
-                </div>
-
-                {/* Next Up Section */}
-                {nextUpPlayers.length > 0 && (
-                  <div className="mt-8">
-                    <h3 className="text-lg font-medium mb-4">Next Up</h3>
-                    <div className="space-y-2">
-                      {nextUpPlayers.map((player: any) => (
-                        <div key={player.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/30">
-                          <div className="flex items-center gap-4">
-                            <span className="font-mono text-lg">#{player.queuePosition}</span>
-                            <span>{player.username}</span>
+                  {/* Next Up Section */}
+                  {nextUpPlayers.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-lg font-medium mb-4">Next Up</h3>
+                      <div className="space-y-2">
+                        {nextUpPlayers.map((player: any) => (
+                          <div key={player.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/30">
+                            <div className="flex items-center gap-4">
+                              <span className="font-mono text-lg">#{player.queuePosition}</span>
+                              <span>{player.username}</span>
+                            </div>
+                            {isOG(player.birthYear) && (
+                              <span className="text-white font-bold">OG</span>
+                            )}
                           </div>
-                          {isOG(player.birthYear) && (
-                            <span className="text-white font-bold">OG</span>
-                          )}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Finished Games */}
-                {finishedGamesList.length > 0 && (
-                  <div className="mt-8">
-                    <h3 className="text-lg font-medium mb-4">Completed Games</h3>
-                    <div className="space-y-6">
-                      {finishedGamesList.map(game => renderGameCard(game, false))}
+                  {/* Finished Games */}
+                  {finishedGamesList.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-lg font-medium mb-4">Completed Games</h3>
+                      <div className="space-y-6">
+                        {finishedGamesList.map(game => renderGameCard(game, false))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
