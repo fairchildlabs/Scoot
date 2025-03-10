@@ -6,7 +6,7 @@ import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import UserManagementPage from "@/pages/user-management";
-import NewGamePage from "@/pages/new-game";
+import GamesPage from "@/pages/games-page";
 import { AuthProvider } from "./hooks/use-auth";
 import { ProtectedRoute } from "./lib/protected-route";
 
@@ -15,7 +15,7 @@ function Router() {
     <Switch>
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/users" component={UserManagementPage} />
-      <ProtectedRoute path="/new-game" component={NewGamePage} />
+      <ProtectedRoute path="/games" component={GamesPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
