@@ -160,13 +160,15 @@ export default function HomePage() {
                   ?.filter((p: any) => p.team === 1)
                   .map((p: any) => (
                     <div key={p.id} className="p-2 rounded-md text-sm bg-secondary/10">
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-lg">#{p.queuePosition}</span>
-                        <span>{p.username}</span>
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono text-lg">#{p.queuePosition}</span>
+                          <span>{p.username}</span>
+                        </div>
+                        {isOG(p.birthYear) && (
+                          <span className="text-primary font-bold ml-auto">OG</span>
+                        )}
                       </div>
-                      {isOG(p.birthYear) && (
-                        <span className="ml-2 text-primary font-bold">OG</span>
-                      )}
                     </div>
                   ))}
               </div>
@@ -185,12 +187,12 @@ export default function HomePage() {
           </Card>
 
           {/* Away Team */}
-          <Card className="bg-black text-white border border-white">
+          <Card className="bg-white text-black">
             <CardHeader className="py-2">
               <CardTitle className="text-sm font-medium">
                 Away
                 {game.state === 'final' && (
-                  <span className="ml-2 text-white font-bold">
+                  <span className="ml-2 text-primary font-bold">
                     {game.team2Score}
                   </span>
                 )}
@@ -201,14 +203,16 @@ export default function HomePage() {
                 {game.players
                   ?.filter((p: any) => p.team === 2)
                   .map((p: any) => (
-                    <div key={p.id} className="p-2 rounded-md text-sm bg-white/10">
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-lg">#{p.queuePosition}</span>
-                        <span>{p.username}</span>
+                    <div key={p.id} className="p-2 rounded-md text-sm bg-secondary/10">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono text-lg">#{p.queuePosition}</span>
+                          <span>{p.username}</span>
+                        </div>
+                        {isOG(p.birthYear) && (
+                          <span className="text-primary font-bold ml-auto">OG</span>
+                        )}
                       </div>
-                      {isOG(p.birthYear) && (
-                        <span className="ml-2 text-yellow-400 font-bold">OG</span>
-                      )}
                     </div>
                   ))}
               </div>
