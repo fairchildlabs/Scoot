@@ -166,7 +166,10 @@ export default function HomePage() {
                   ?.filter((p: any) => p.team === 1)
                   .map((p: any) => (
                     <div key={p.id} className="p-2 rounded-md text-sm bg-secondary/10">
-                      <span>#{p.queuePosition} {p.username}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-lg">#{p.queuePosition}</span>
+                        <span>{p.username}</span>
+                      </div>
                       {isOG(p.birthYear) && (
                         <span className="ml-2 text-primary font-bold">OG</span>
                       )}
@@ -205,7 +208,10 @@ export default function HomePage() {
                   ?.filter((p: any) => p.team === 2)
                   .map((p: any) => (
                     <div key={p.id} className="p-2 rounded-md text-sm bg-white/10">
-                      <span>#{p.queuePosition} {p.username}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-lg">#{p.queuePosition}</span>
+                        <span>{p.username}</span>
+                      </div>
                       {isOG(p.birthYear) && (
                         <span className="ml-2 text-yellow-400 font-bold">OG</span>
                       )}
@@ -286,7 +292,7 @@ export default function HomePage() {
                       {nextUpPlayers.map((player: any, index: number) => (
                         <div key={player.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/30">
                           <div className="flex items-center gap-4">
-                            <span className="font-mono text-lg">{index + playersNeeded + 1}</span>
+                            <span className="font-mono text-lg">#{player.queuePosition}</span>
                             <span>{player.username}</span>
                           </div>
                           {isOG(player.birthYear) && (
