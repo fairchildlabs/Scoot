@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertGameSetSchema, games } from "@shared/schema";
+import { insertGameSetSchema, games, checkins } from "@shared/schema";
 import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
@@ -28,11 +28,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/checkins", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const checkins = await storage.getCheckins(34);
+    const checkinsData = await storage.getCheckins(34);
 
     // Get complete user data for each checkin
     const checkinsWithUserData = await Promise.all(
-      checkins.map(async (checkin) => {
+      checkinsData.map(async (checkin) => {
         const user = await storage.getUser(checkin.userId);
         return {
           ...checkin,
@@ -70,14 +70,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       // Get all active checkins
-      const checkins = await storage.getCheckins(34);
+      const checkinsData = await storage.getCheckins(34);
 
       console.log('POST /api/checkins/clear - Deactivating checkins:', 
-        checkins.map(c => ({ id: c.id, userId: c.userId, username: c.username }))
+        checkinsData.map(c => ({ id: c.id, userId: c.userId, username: c.username }))
       );
 
       // Deactivate all checkins
-      for (const checkin of checkins) {
+      for (const checkin of checkinsData) {
         await storage.deactivateCheckin(checkin.id);
       }
 
