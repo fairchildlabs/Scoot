@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertGameSetSchema, games, checkins } from "@shared/schema";
+import { insertGameSetSchema, games, checkins, users } from "@shared/schema";
 import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
@@ -85,6 +85,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.sendStatus(200);
     } catch (error) {
       console.error('POST /api/checkins/clear - Error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/checkins/check-in-all", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
+
+    try {
+      // Get all players (users with isPlayer flag)
+      const players = await db
+        .select()
+        .from(users)
+        .where(eq(users.isPlayer, true));
+
+      // Check in each player
+      for (const player of players) {
+        try {
+          await storage.createCheckin(player.id, 34);
+        } catch (error) {
+          console.error(`Failed to check in player ${player.username}:`, error);
+          // Continue with next player even if one fails
+        }
+      }
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('POST /api/checkins/check-in-all - Error:', error);
       res.status(500).json({ error: (error as Error).message });
     }
   });

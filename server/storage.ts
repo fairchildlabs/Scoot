@@ -313,6 +313,8 @@ export class DatabaseStorage implements IStorage {
         userId: checkins.userId,
         username: users.username,
         checkInTime: checkins.checkInTime,
+        gameId: checkins.gameId,
+        type: checkins.type
       })
       .from(checkins)
       .innerJoin(users, eq(checkins.userId, users.id))
@@ -362,6 +364,7 @@ export class DatabaseStorage implements IStorage {
           team: null,
           score: null,
           court: null,
+          type: checkin.type
         };
       }
 
@@ -378,6 +381,7 @@ export class DatabaseStorage implements IStorage {
         team,
         score,
         court: gameInfo.court,
+        type: checkin.type
       };
     });
   }

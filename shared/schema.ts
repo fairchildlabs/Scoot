@@ -2,6 +2,16 @@ import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Define checkin types
+export const CheckinType = {
+  MANUAL: 'manual',
+  AUTOUP: 'autoup',
+  WIN_PROMOTED: 'win_promoted',
+  LOSS_PROMOTED: 'loss_promoted'
+} as const;
+
+export type CheckinType = typeof CheckinType[keyof typeof CheckinType];
+
 // Define all tables first
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -29,12 +39,12 @@ export const gameSets = pgTable("game_sets", {
   playersPerTeam: integer("players_per_team").notNull().default(4),
   gym: text("gym").notNull().default('fonde'),
   maxConsecutiveTeamWins: integer("max_consecutive_team_wins").notNull().default(2),
-  timeLimit: integer("time_limit").notNull().default(15), // in minutes
+  timeLimit: integer("time_limit").notNull().default(15),
   winScore: integer("win_score").notNull().default(21),
   pointSystem: text("point_system").notNull().default('2s and 3s'),
   isActive: boolean("is_active").notNull().default(true),
   numberOfCourts: integer("number_of_courts").notNull().default(2),
-  currentQueuePosition: integer("current_queue_position").notNull().default(1), // Track current queue position
+  currentQueuePosition: integer("current_queue_position").notNull().default(1),
 });
 
 export const games = pgTable("games", {
@@ -52,19 +62,21 @@ export const games = pgTable("games", {
 export const checkins = pgTable("checkins", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  gameSetId: integer("game_set_id").notNull(), // Associate with game set
-  queuePosition: integer("queue_position").notNull(), // Track position in queue
+  gameSetId: integer("game_set_id").notNull(),
+  queuePosition: integer("queue_position").notNull(),
   checkInTime: timestamp("check_in_time").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   clubIndex: integer("club_index").notNull().default(34),
   checkInDate: text("check_in_date").notNull(),
+  gameId: integer("game_id"), // Reference to the game this checkin is related to
+  type: text("type").notNull().default('manual'), // Type of checkin
 });
 
 export const gamePlayers = pgTable("game_players", {
   id: serial("id").primaryKey(),
   gameId: integer("game_id").notNull(),
   userId: integer("user_id").notNull(),
-  team: integer("team").notNull(), // 1 or 2
+  team: integer("team").notNull(),
 });
 
 // Define schemas after all tables are defined

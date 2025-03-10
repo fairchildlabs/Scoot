@@ -18,6 +18,7 @@ import NewGamePage from "./new-game";
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
 
+// Update the GameSetLog component to show checkin type
 function GameSetLog() {
   const { data: activeGameSet } = useQuery({
     queryKey: ["/api/game-sets/active"],
@@ -38,21 +39,23 @@ function GameSetLog() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-6 gap-4 font-semibold border-b pb-2">
+      <div className="grid grid-cols-7 gap-4 font-semibold border-b pb-2">
         <div>Position</div>
         <div className="col-span-2">Player</div>
         <div>Team</div>
         <div>Court</div>
         <div>Score</div>
+        <div>Type</div>
       </div>
       <div className="space-y-2">
         {gameSetLog?.map((entry: any) => (
-          <div key={entry.queuePosition} className="grid grid-cols-6 gap-4 py-2">
+          <div key={entry.queuePosition} className="grid grid-cols-7 gap-4 py-2">
             <div>#{entry.queuePosition}</div>
             <div className="col-span-2">{entry.username}</div>
             <div>{entry.team || "Pending"}</div>
             <div>{entry.court || "-"}</div>
             <div>{entry.score || "Pending"}</div>
+            <div>{entry.type}</div>
           </div>
         ))}
       </div>
@@ -81,7 +84,6 @@ export default function GamesPage() {
         throw new Error("Failed to clear queue");
       }
 
-      // Invalidate the checkins query to refresh the data
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
       toast({
         title: "Success",
@@ -92,6 +94,31 @@ export default function GamesPage() {
       toast({
         title: "Error",
         description: "Failed to clear queue",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCheckInAll = async () => {
+    try {
+      const response = await fetch("/api/checkins/check-in-all", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check in all players");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      toast({
+        title: "Success",
+        description: "All players checked in successfully",
+      });
+    } catch (error) {
+      console.error("Error checking in all players:", error);
+      toast({
+        title: "Error",
+        description: "Failed to check in all players",
         variant: "destructive",
       });
     }
@@ -295,9 +322,14 @@ export default function GamesPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Games Management</h1>
-          <Button onClick={handleClearQueue} variant="destructive">
-            Clear Queue
-          </Button>
+          <div className="flex gap-4">
+            <Button onClick={handleCheckInAll}>
+              Check-In All
+            </Button>
+            <Button onClick={handleClearQueue} variant="destructive">
+              Clear Queue
+            </Button>
+          </div>
         </div>
         <Card>
           <CardContent className="p-6">
