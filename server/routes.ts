@@ -100,9 +100,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(users)
         .where(eq(users.isPlayer, true));
 
-      // Check in each player
+      console.log('POST /api/checkins/check-in-all - Found players:', players);
+
+      // Get active game set
+      const activeGameSet = await storage.getActiveGameSet();
+      if (!activeGameSet) {
+        return res.status(400).json({ error: "No active game set available for check-ins" });
+      }
+
+      // Create checkins for each player
       for (const player of players) {
         try {
+          console.log(`Attempting to create checkin for player ${player.username}`);
           await storage.createCheckin(player.id, 34);
         } catch (error) {
           console.error(`Failed to check in player ${player.username}:`, error);
