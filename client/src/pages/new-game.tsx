@@ -5,10 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2, X, HandMetal, ArrowLeftRight, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Redirect, useLocation } from "wouter";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Redirect } from "wouter";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -17,7 +16,6 @@ import { type InsertGame } from "@shared/schema";
 const NewGamePage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const [selectedCourt, setSelectedCourt] = useState<string>("1");
   const [statusMessage, setStatusMessage] = useState<string>('');
 
@@ -40,22 +38,7 @@ const NewGamePage = () => {
 
   // If no active game set or it's invalid (id = 0), return early
   if (!activeGameSet || activeGameSet.id === 0) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>No Active Game Set</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Please create a game set first.</p>
-            </CardContent>
-          </Card>
-        </main>
-        <Footer />
-      </div>
-    );
+    return null;  // Parent component will handle the display
   }
 
   if (gameSetLoading || checkinsLoading) {
@@ -94,7 +77,6 @@ const NewGamePage = () => {
         {isOG(player.birthYear) && (
           <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
         )}
-        {/*This section is missing in the edited code, but it's crucial for functionality.  I'm restoring it.*/}
         <Button
           size="icon"
           variant="outline"
@@ -156,14 +138,6 @@ const NewGamePage = () => {
   const CourtSelection = () => {
     const numberOfCourts = activeGameSet?.numberOfCourts || 1;
 
-    if (numberOfCourts === 1) {
-      return (
-        <div className="flex items-center justify-center gap-4 bg-white rounded-lg p-4">
-          <Label className="text-black">Court #1</Label>
-        </div>
-      );
-    }
-
     return (
       <RadioGroup
         value={selectedCourt}
@@ -204,7 +178,7 @@ const NewGamePage = () => {
         setId: Number(activeGameSet.id),
         startTime: new Date().toISOString(),
         court: selectedCourt,
-        state: 'started'  // Add state when creating game
+        state: 'started'
       };
 
       // Create the game
@@ -228,7 +202,7 @@ const NewGamePage = () => {
         title: "Success",
         description: `Game #${game.id} created successfully`
       });
-      setLocation("/");
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
@@ -243,7 +217,6 @@ const NewGamePage = () => {
     mutationFn: async ({ playerId, moveType, playerNumber }: { playerId: number, moveType: string, playerNumber: number }) => {
       if (!activeGameSet) throw new Error("No active game set");
 
-      console.log('Making player move:', { playerId, moveType });
       const res = await apiRequest("POST", "/api/player-move", {
         playerId,
         moveType,
@@ -258,9 +231,6 @@ const NewGamePage = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["/api/checkins"] });
-      }, 100);
       setStatusMessage(`Player #${data.playerNumber} moved successfully`);
     },
     onError: (error: Error) => {
@@ -268,7 +238,6 @@ const NewGamePage = () => {
       setStatusMessage(`Error: ${error.message}`);
     }
   });
-
 
   const isLoading = playerMoveMutation.isPending || createGameMutation.isPending;
 
