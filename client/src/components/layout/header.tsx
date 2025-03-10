@@ -30,10 +30,10 @@ export function Header() {
             {(user.isEngineer || user.isRoot) && (
               <>
                 <Link href="/users">
-                  <Button variant="outline">Manage Players</Button>
+                  <Button variant="outline">Players</Button>
                 </Link>
-                <Link href="/new-game">
-                  <Button variant="outline">New Game</Button>
+                <Link href="/games">
+                  <Button variant="outline">Games</Button>
                 </Link>
               </>
             )}

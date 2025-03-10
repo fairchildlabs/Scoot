@@ -96,6 +96,31 @@ export class DatabaseStorage implements IStorage {
 
   async createCheckin(userId: number, clubIndex: number): Promise<Checkin> {
     const now = getCentralTime();
+    const today = getDateString(now);
+
+    console.log(`Attempting to create checkin for user ${userId} at club ${clubIndex}`);
+
+    // Check for existing active checkin for this user
+    const existingCheckins = await db
+      .select()
+      .from(checkins)
+      .where(
+        and(
+          eq(checkins.userId, userId),
+          eq(checkins.clubIndex, clubIndex),
+          eq(checkins.isActive, true),
+          eq(checkins.checkInDate, today)
+        )
+      );
+
+    // If user already has an active checkin, return it
+    if (existingCheckins.length > 0) {
+      console.log(`User ${userId} already has an active checkin for today:`, existingCheckins[0]);
+      return existingCheckins[0];
+    }
+
+    // Create new checkin if none exists
+    console.log(`Creating new checkin for user ${userId}`);
     const [checkin] = await db
       .insert(checkins)
       .values({
@@ -103,17 +128,21 @@ export class DatabaseStorage implements IStorage {
         clubIndex,
         checkInTime: now,
         isActive: true,
-        checkInDate: getDateString(now),
+        checkInDate: today,
       })
       .returning();
+
+    console.log(`Created new checkin:`, checkin);
     return checkin;
   }
 
   async deactivateCheckin(checkinId: number): Promise<void> {
+    console.log(`Deactivating checkin ${checkinId}`);
     await db
       .update(checkins)
       .set({ isActive: false })
       .where(eq(checkins.id, checkinId));
+    console.log(`Successfully deactivated checkin ${checkinId}`);
   }
 
   async createGame(setId: number, court: string, state: string): Promise<Game> {

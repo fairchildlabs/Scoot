@@ -64,6 +64,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(checkin);
   });
 
+  app.post("/api/checkins/clear", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
+
+    try {
+      // Get all active checkins
+      const checkins = await storage.getCheckins(34);
+
+      console.log('POST /api/checkins/clear - Deactivating checkins:', 
+        checkins.map(c => ({ id: c.id, userId: c.userId, username: c.username }))
+      );
+
+      // Deactivate all checkins
+      for (const checkin of checkins) {
+        await storage.deactivateCheckin(checkin.id);
+      }
+
+      console.log('POST /api/checkins/clear - Successfully deactivated all checkins');
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('POST /api/checkins/clear - Error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   app.post("/api/games", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.user!.isEngineer) return res.sendStatus(403);
@@ -110,6 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { team1Score, team2Score } = req.body;
       const gameId = parseInt(req.params.id);
+
+      console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
 
       // Get the current game with player info
       const game = await storage.getGame(gameId);
