@@ -170,9 +170,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         losingPlayers: losingPlayers.map(p => p.username)
       });
 
-      // Create new checkins for losing team players
+      // First deactivate existing checkins for losing players
       for (const player of losingPlayers) {
+        const existingCheckins = await db
+          .select()
+          .from(checkins)
+          .where(
+            and(
+              eq(checkins.userId, player.userId),
+              eq(checkins.isActive, true),
+              eq(checkins.clubIndex, 34)
+            )
+          );
+
+        // Deactivate any existing active checkins
+        for (const checkin of existingCheckins) {
+          await storage.deactivateCheckin(checkin.id);
+          console.log(`Deactivated existing checkin for player ${player.username}`);
+        }
+
+        // Create new checkin to put them at the end of the queue
         await storage.createCheckin(player.userId, 34);
+        console.log(`Created new checkin for player ${player.username}`);
       }
 
       res.json(updatedGame);
