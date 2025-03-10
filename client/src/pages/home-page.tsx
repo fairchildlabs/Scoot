@@ -166,7 +166,7 @@ export default function HomePage() {
                   ?.filter((p: any) => p.team === 1)
                   .map((p: any) => (
                     <div key={p.id} className="p-2 rounded-md text-sm bg-secondary/10">
-                      <span>{p.username}</span>
+                      <span>#{p.queuePosition} {p.username}</span>
                       {isOG(p.birthYear) && (
                         <span className="ml-2 text-primary font-bold">OG</span>
                       )}
@@ -205,7 +205,7 @@ export default function HomePage() {
                   ?.filter((p: any) => p.team === 2)
                   .map((p: any) => (
                     <div key={p.id} className="p-2 rounded-md text-sm bg-white/10">
-                      <span>{p.username}</span>
+                      <span>#{p.queuePosition} {p.username}</span>
                       {isOG(p.birthYear) && (
                         <span className="ml-2 text-yellow-400 font-bold">OG</span>
                       )}
