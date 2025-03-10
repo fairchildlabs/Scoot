@@ -207,7 +207,7 @@ export default function HomePage() {
                     <div key={p.id} className="p-2 rounded-md text-sm bg-white/10">
                       <span>{p.username}</span>
                       {isOG(p.birthYear) && (
-                        <span className="ml-2 text-white font-bold">OG</span>
+                        <span className="ml-2 text-yellow-400 font-bold">OG</span>
                       )}
                     </div>
                   ))}

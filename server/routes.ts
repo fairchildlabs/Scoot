@@ -173,10 +173,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      // Determine which players go back to queue
+      // Determine which players go back to queue based on consecutive wins
       const playersToQueue = consecutiveWins >= gameSet.maxConsecutiveTeamWins
-        ? winningPlayers
-        : losingPlayers;
+        ? winningPlayers  // If team has won max consecutive games, they go to queue
+        : losingPlayers;  // Otherwise, losing team goes to queue
 
       // Create new checkins for players going back to queue
       for (const player of playersToQueue) {
@@ -191,6 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         winningTeam,
         losingTeam,
         consecutiveWins,
+        maxConsecutiveWins: gameSet.maxConsecutiveTeamWins,
         playersToQueue: playersToQueue.map(p => p.username)
       });
 
