@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertGameSetSchema, games, checkins, users } from "@shared/schema";
+import { insertGameSetSchema, games, checkins, users, gameSets } from "@shared/schema";
 import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
@@ -347,6 +347,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(gamesWithPlayers);
     } catch (error) {
       console.error('GET /api/games/active - Error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // Add a new endpoint to clear the active game set
+  app.post("/api/game-sets/clear", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
+
+    try {
+      // Deactivate all game sets
+      await db
+        .update(gameSets)
+        .set({ isActive: false })
+        .where(eq(gameSets.isActive, true));
+
+      // Also clear all active checkins
+      await db
+        .update(checkins)
+        .set({ isActive: false })
+        .where(eq(checkins.isActive, true));
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('POST /api/game-sets/clear - Error:', error);
       res.status(500).json({ error: (error as Error).message });
     }
   });

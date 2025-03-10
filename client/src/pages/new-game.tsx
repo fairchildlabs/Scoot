@@ -38,6 +38,157 @@ const NewGamePage = () => {
     enabled: !!user,
   });
 
+  // If no active game set or it's invalid (id = 0), return early
+  if (!activeGameSet || activeGameSet.id === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>No Active Game Set</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Please create a game set first.</p>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (gameSetLoading || checkinsLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
+  const playersCheckedIn = checkins?.length || 0;
+
+  // Split players into home and away teams and next up
+  const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
+  const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
+  const nextUpPlayers = checkins?.slice(playersNeeded) || [];
+
+  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
+    <div className={`flex items-center justify-between p-2 rounded-md ${
+      isNextUp ? 'bg-secondary/30 text-white' :
+        isAway ? 'bg-black text-white border border-white' :
+          'bg-white text-black'
+    }`}>
+      <div className="flex items-center gap-4">
+        <span className="font-mono text-lg">#{player.queuePosition}</span>
+        <span>{player.username}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        {isOG(player.birthYear) && (
+          <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
+        )}
+        {/*This section is missing in the edited code, but it's crucial for functionality.  I'm restoring it.*/}
+        <Button
+          size="icon"
+          variant="outline"
+          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
+          onClick={() => {
+            const playerNumber = player.queuePosition;
+            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT', playerNumber });
+          }}
+          disabled={isLoading}
+        >
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+        </Button>
+        <Button
+          size="icon"
+          variant="outline"
+          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
+          onClick={() => {
+            const playerNumber = player.queuePosition;
+            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP', playerNumber });
+          }}
+          disabled={isLoading}
+        >
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandMetal className="h-4 w-4" />}
+        </Button>
+        {!isNextUp && (
+          <Button
+            size="icon"
+            variant="outline"
+            className="rounded-full h-8 w-8 border-white text-white hover:text-white"
+            onClick={() => {
+              const playerNumber = player.queuePosition;
+              playerMoveMutation.mutate({
+                playerId: player.userId,
+                moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP',
+                playerNumber
+              });
+            }}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  // Calculate current year for OG status
+  const currentYear = new Date().getFullYear();
+  const isOG = (birthYear?: number) => {
+    if (!birthYear) return false;
+    return (currentYear - birthYear) >= 75;
+  };
+
+  // Generate court selection UI based on number of courts
+  const CourtSelection = () => {
+    const numberOfCourts = activeGameSet?.numberOfCourts || 1;
+
+    if (numberOfCourts === 1) {
+      return (
+        <div className="flex items-center justify-center gap-4 bg-white rounded-lg p-4">
+          <Label className="text-black">Court #1</Label>
+        </div>
+      );
+    }
+
+    return (
+      <RadioGroup
+        value={selectedCourt}
+        onValueChange={setSelectedCourt}
+        className="flex items-center justify-center gap-4 bg-white rounded-lg p-4"
+      >
+        {Array.from({ length: numberOfCourts }, (_, i) => i + 1).map((courtNumber) => (
+          <div key={courtNumber} className="flex items-center space-x-2">
+            <RadioGroupItem
+              value={courtNumber.toString()}
+              id={`court-${courtNumber}`}
+              className="text-black border-2 border-black data-[state=checked]:bg-black data-[state=checked]:border-black"
+            />
+            <Label
+              htmlFor={`court-${courtNumber}`}
+              className="text-black"
+            >
+              Court #{courtNumber}
+            </Label>
+          </div>
+        ))}
+      </RadioGroup>
+    );
+  };
+
   const createGameMutation = useMutation({
     mutationFn: async () => {
       if (!activeGameSet) {
@@ -118,139 +269,8 @@ const NewGamePage = () => {
     }
   });
 
-  // Extract the loading state
-  const isLoading = playerMoveMutation.isPending;
 
-  if (gameSetLoading || checkinsLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
-  const playersCheckedIn = checkins?.length || 0;
-
-  // Split players into home and away teams and next up
-  const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
-  const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
-  const nextUpPlayers = checkins?.slice(playersNeeded) || [];
-
-  // Calculate current year for OG status
-  const currentYear = new Date().getFullYear();
-  const isOG = (birthYear?: number) => {
-    if (!birthYear) return false;
-    return (currentYear - birthYear) >= 75;
-  };
-
-  // PlayerCard component
-  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
-    <div className={`flex items-center justify-between p-2 rounded-md ${
-      isNextUp ? 'bg-secondary/30 text-white' :
-        isAway ? 'bg-black text-white border border-white' :
-          'bg-white text-black'
-    }`}>
-      <div className="flex items-center gap-4">
-        <span className="font-mono text-lg">#{player.queuePosition}</span>
-        <span>{player.username}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        {isOG(player.birthYear) && (
-          <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
-        )}
-        <Button
-          size="icon"
-          variant="outline"
-          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => {
-            const playerNumber = player.queuePosition;
-            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT', playerNumber });
-          }}
-          disabled={isLoading}
-        >
-          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-        </Button>
-        <Button
-          size="icon"
-          variant="outline"
-          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => {
-            const playerNumber = player.queuePosition;
-            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP', playerNumber });
-          }}
-          disabled={isLoading}
-        >
-          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandMetal className="h-4 w-4" />}
-        </Button>
-        {!isNextUp && (
-          <Button
-            size="icon"
-            variant="outline"
-            className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-            onClick={() => {
-              const playerNumber = player.queuePosition;
-              playerMoveMutation.mutate({
-                playerId: player.userId,
-                moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP',
-                playerNumber
-              });
-            }}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />
-            )}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-
-  // Generate court selection UI based on number of courts
-  const CourtSelection = () => {
-    const numberOfCourts = activeGameSet?.numberOfCourts || 1;
-
-    if (numberOfCourts === 1) {
-      return (
-        <div className="flex items-center justify-center gap-4 bg-white rounded-lg p-4">
-          <Label className="text-black">Court #1</Label>
-        </div>
-      );
-    }
-
-    return (
-      <RadioGroup
-        value={selectedCourt}
-        onValueChange={setSelectedCourt}
-        className="flex items-center justify-center gap-4 bg-white rounded-lg p-4"
-      >
-        {Array.from({ length: numberOfCourts }, (_, i) => i + 1).map((courtNumber) => (
-          <div key={courtNumber} className="flex items-center space-x-2">
-            <RadioGroupItem
-              value={courtNumber.toString()}
-              id={`court-${courtNumber}`}
-              className="text-black border-2 border-black data-[state=checked]:bg-black data-[state=checked]:border-black"
-            />
-            <Label
-              htmlFor={`court-${courtNumber}`}
-              className="text-black"
-            >
-              Court #{courtNumber}
-            </Label>
-          </div>
-        ))}
-      </RadioGroup>
-    );
-  };
+  const isLoading = playerMoveMutation.isPending || createGameMutation.isPending;
 
   return (
     <div className="min-h-screen bg-background">
@@ -258,9 +278,7 @@ const NewGamePage = () => {
       <main className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>
-              {activeGameSet ? `Set #${activeGameSet.id} Roster` : 'Create New Game'}
-            </CardTitle>
+            <CardTitle>Set #{activeGameSet.id} Roster</CardTitle>
             {statusMessage && (
               <div className="text-red-500 mt-2 text-sm">
                 {statusMessage}
@@ -268,11 +286,7 @@ const NewGamePage = () => {
             )}
           </CardHeader>
           <CardContent>
-            {!activeGameSet ? (
-              <div className="text-center py-4">
-                <p className="text-muted-foreground">No active game set. Please create a game set first.</p>
-              </div>
-            ) : playersCheckedIn < playersNeeded ? (
+            {playersCheckedIn < playersNeeded ? (
               <div className="text-center py-4">
                 <p className="text-destructive font-medium">Not enough players checked in (Currently {playersCheckedIn})</p>
                 <p className="text-sm text-muted-foreground mt-2">

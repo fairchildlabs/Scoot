@@ -124,6 +124,35 @@ export default function GamesPage() {
     }
   };
 
+  // Add clearGameSet function
+  const handleClearGameSet = async () => {
+    try {
+      const response = await fetch("/api/game-sets/clear", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to clear game set");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+
+      toast({
+        title: "Success",
+        description: "Game set cleared successfully",
+      });
+    } catch (error) {
+      console.error("Error clearing game set:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear game set",
+        variant: "destructive",
+      });
+    }
+  };
+
   function NewGameSetForm() {
     const form = useForm<InsertGameSet>({
       resolver: zodResolver(insertGameSetSchema),
@@ -328,6 +357,9 @@ export default function GamesPage() {
             </Button>
             <Button onClick={handleClearQueue} variant="destructive">
               Clear Queue
+            </Button>
+            <Button onClick={handleClearGameSet} variant="destructive">
+              Clear Game Set
             </Button>
           </div>
         </div>
