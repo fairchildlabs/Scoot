@@ -245,6 +245,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendStatus(200);
   });
 
+  app.get("/api/game-sets/:id/log", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const gameSetId = parseInt(req.params.id);
+      const log = await storage.getGameSetLog(gameSetId);
+      res.json(log);
+    } catch (error) {
+      console.error('GET /api/game-sets/:id/log - Error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   app.post("/api/player-move", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);

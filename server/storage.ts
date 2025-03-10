@@ -38,6 +38,7 @@ export interface IStorage {
   updateCheckins(setId: number, gameState: GameState): Promise<void>;
   createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer>;
   getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number })[] }>;
+  getGameSetLog(gameSetId: number): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -100,6 +101,12 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`Attempting to create checkin for user ${userId} at club ${clubIndex}`);
 
+    // Get active game set first
+    const activeGameSet = await this.getActiveGameSet();
+    if (!activeGameSet) {
+      throw new Error("No active game set available for check-ins");
+    }
+
     // Check for existing active checkin for this user
     const existingCheckins = await db
       .select()
@@ -119,7 +126,7 @@ export class DatabaseStorage implements IStorage {
       return existingCheckins[0];
     }
 
-    // Create new checkin if none exists
+    // Create new checkin with next queue position
     console.log(`Creating new checkin for user ${userId}`);
     const [checkin] = await db
       .insert(checkins)
@@ -129,8 +136,18 @@ export class DatabaseStorage implements IStorage {
         checkInTime: now,
         isActive: true,
         checkInDate: today,
+        gameSetId: activeGameSet.id,
+        queuePosition: activeGameSet.currentQueuePosition,
       })
       .returning();
+
+    // Increment the game set's current queue position
+    await db
+      .update(gameSets)
+      .set({ 
+        currentQueuePosition: activeGameSet.currentQueuePosition + 1 
+      })
+      .where(eq(gameSets.id, activeGameSet.id));
 
     console.log(`Created new checkin:`, checkin);
     return checkin;
@@ -286,6 +303,83 @@ export class DatabaseStorage implements IStorage {
       ...game,
       players
     };
+  }
+
+  async getGameSetLog(gameSetId: number): Promise<any[]> {
+    // Get all checkins for this game set with user info
+    const checkinsWithUsers = await db
+      .select({
+        queuePosition: checkins.queuePosition,
+        userId: checkins.userId,
+        username: users.username,
+        checkInTime: checkins.checkInTime,
+      })
+      .from(checkins)
+      .innerJoin(users, eq(checkins.userId, users.id))
+      .where(eq(checkins.gameSetId, gameSetId))
+      .orderBy(checkins.queuePosition);
+
+    // Get all games for this set with player info
+    const gamesWithPlayers = await db
+      .select({
+        id: games.id,
+        court: games.court,
+        state: games.state,
+        team1Score: games.team1Score,
+        team2Score: games.team2Score,
+        startTime: games.startTime,
+        endTime: games.endTime,
+      })
+      .from(games)
+      .where(eq(games.setId, gameSetId));
+
+    // Get player assignments for each game
+    const gamePlayerAssignments = await Promise.all(
+      gamesWithPlayers.map(async (game) => {
+        const players = await db
+          .select({
+            gameId: gamePlayers.gameId,
+            userId: gamePlayers.userId,
+            team: gamePlayers.team,
+          })
+          .from(gamePlayers)
+          .where(eq(gamePlayers.gameId, game.id));
+        return { ...game, players };
+      })
+    );
+
+    // Combine checkins with game information
+    return checkinsWithUsers.map((checkin) => {
+      // Find game where this user played
+      const gameInfo = gamePlayerAssignments.find((game) =>
+        game.players.some((p) => p.userId === checkin.userId)
+      );
+
+      if (!gameInfo) {
+        return {
+          ...checkin,
+          gameStatus: "Pending",
+          team: null,
+          score: null,
+          court: null,
+        };
+      }
+
+      const playerInfo = gameInfo.players.find((p) => p.userId === checkin.userId);
+      const team = playerInfo?.team === 1 ? "Home" : "Away";
+      const score =
+        gameInfo.state === "final"
+          ? `${gameInfo.team1Score}-${gameInfo.team2Score}`
+          : "In Progress";
+
+      return {
+        ...checkin,
+        gameStatus: gameInfo.state,
+        team,
+        score,
+        court: gameInfo.court,
+      };
+    });
   }
 }
 

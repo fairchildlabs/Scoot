@@ -18,6 +18,48 @@ import NewGamePage from "./new-game";
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
 
+function GameSetLog() {
+  const { data: activeGameSet } = useQuery({
+    queryKey: ["/api/game-sets/active"],
+  });
+
+  const { data: gameSetLog } = useQuery({
+    queryKey: [`/api/game-sets/${activeGameSet?.id}/log`],
+    enabled: !!activeGameSet?.id,
+  });
+
+  if (!activeGameSet) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-muted-foreground">No active game set available.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-6 gap-4 font-semibold border-b pb-2">
+        <div>Position</div>
+        <div className="col-span-2">Player</div>
+        <div>Team</div>
+        <div>Court</div>
+        <div>Score</div>
+      </div>
+      <div className="space-y-2">
+        {gameSetLog?.map((entry: any) => (
+          <div key={entry.queuePosition} className="grid grid-cols-6 gap-4 py-2">
+            <div>#{entry.queuePosition}</div>
+            <div className="col-span-2">{entry.username}</div>
+            <div>{entry.team || "Pending"}</div>
+            <div>{entry.court || "-"}</div>
+            <div>{entry.score || "Pending"}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function GamesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -263,12 +305,16 @@ export default function GamesPage() {
               <TabsList className="mb-4">
                 <TabsTrigger value="new-game-set">New Game Set</TabsTrigger>
                 <TabsTrigger value="new-game">New Game</TabsTrigger>
+                <TabsTrigger value="game-set-log">Game Set Log</TabsTrigger>
               </TabsList>
               <TabsContent value="new-game-set">
                 <NewGameSetForm />
               </TabsContent>
               <TabsContent value="new-game">
                 <NewGamePage />
+              </TabsContent>
+              <TabsContent value="game-set-log">
+                <GameSetLog />
               </TabsContent>
             </Tabs>
           </CardContent>

@@ -34,6 +34,7 @@ export const gameSets = pgTable("game_sets", {
   pointSystem: text("point_system").notNull().default('2s and 3s'),
   isActive: boolean("is_active").notNull().default(true),
   numberOfCourts: integer("number_of_courts").notNull().default(2),
+  currentQueuePosition: integer("current_queue_position").notNull().default(1), // Track current queue position
 });
 
 export const games = pgTable("games", {
@@ -44,13 +45,15 @@ export const games = pgTable("games", {
   team1Score: integer("team1_score"),
   team2Score: integer("team2_score"),
   clubIndex: integer("club_index").notNull().default(34),
-  court: text("court").notNull(),  // Changed from default('West') to accept any court number
-  state: text("state").notNull().default('started'),  // Added state field with values 'started' or 'final'
+  court: text("court").notNull(),
+  state: text("state").notNull().default('started'),
 });
 
 export const checkins = pgTable("checkins", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
+  gameSetId: integer("game_set_id").notNull(), // Associate with game set
+  queuePosition: integer("queue_position").notNull(), // Track position in queue
   checkInTime: timestamp("check_in_time").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   clubIndex: integer("club_index").notNull().default(34),
@@ -98,15 +101,15 @@ export const insertGameSetSchema = createInsertSchema(gameSets, {
   id: true,
   createdAt: true,
   isActive: true,
-  createdBy: true  // Explicitly omit createdBy as it's set by the server
+  createdBy: true,
+  currentQueuePosition: true
 });
 
-// Add insertGameSchema with proper field validations
 export const insertGameSchema = createInsertSchema(games, {
   setId: z.number(),
   startTime: z.string(),
-  court: z.string(),  // Changed from enum to string to accept court numbers
-  state: z.enum(['started', 'final']).default('started'),  // Added state field
+  court: z.string(),
+  state: z.enum(['started', 'final']).default('started'),
 }).omit({
   id: true,
   endTime: true,
