@@ -37,7 +37,7 @@ export interface IStorage {
   deactivateGameSet(setId: number): Promise<void>;
   updateCheckins(setId: number, gameState: GameState): Promise<void>;
   createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer>;
-  getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number })[] }>;
+  getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number, queuePosition: number })[] }>;
   getGameSetLog(gameSetId: number): Promise<any[]>;
 }
 
@@ -292,7 +292,7 @@ export class DatabaseStorage implements IStorage {
     return gamePlayer;
   }
 
-  async getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number })[] }> {
+  async getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number, queuePosition: number })[] }> {
     // Get the game
     const [game] = await db.select().from(games).where(eq(games.id, gameId));
     if (!game) throw new Error(`Game ${gameId} not found`);
@@ -305,10 +305,15 @@ export class DatabaseStorage implements IStorage {
         userId: gamePlayers.userId,
         team: gamePlayers.team,
         username: users.username,
-        birthYear: users.birthYear
+        birthYear: users.birthYear,
+        queuePosition: checkins.queuePosition
       })
       .from(gamePlayers)
       .innerJoin(users, eq(gamePlayers.userId, users.id))
+      .innerJoin(checkins, and(
+        eq(checkins.userId, gamePlayers.userId),
+        eq(checkins.gameSetId, game.setId)
+      ))
       .where(eq(gamePlayers.gameId, gameId));
 
     return {
