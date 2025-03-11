@@ -182,15 +182,100 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game> {
+    console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
+
     const [game] = await db
       .update(games)
       .set({
         team1Score,
         team2Score,
         endTime: new Date(),
+        state: 'final'
       })
       .where(eq(games.id, gameId))
       .returning();
+
+    // Determine winning and losing teams
+    const winningTeam = team1Score > team2Score ? 1 : 2;
+    const losingTeam = winningTeam === 1 ? 2 : 1;
+
+    // Get losing team players
+    const losingPlayers = await db
+      .select({
+        userId: gamePlayers.userId,
+        username: users.username
+      })
+      .from(gamePlayers)
+      .innerJoin(users, eq(gamePlayers.userId, users.id))
+      .where(
+        and(
+          eq(gamePlayers.gameId, gameId),
+          eq(gamePlayers.team, losingTeam)
+        )
+      );
+
+    console.log('Game ended:', {
+      gameId,
+      winningTeam,
+      losingTeam,
+      losingPlayers: losingPlayers.map(p => p.username)
+    });
+
+    // Get active game set
+    const activeGameSet = await this.getActiveGameSet();
+    if (!activeGameSet) {
+      throw new Error("No active game set available");
+    }
+
+    // Re-add losing players to queue
+    for (const player of losingPlayers) {
+      // Deactivate any existing checkins for this player
+      const existingCheckins = await db
+        .select()
+        .from(checkins)
+        .where(
+          and(
+            eq(checkins.userId, player.userId),
+            eq(checkins.isActive, true)
+          )
+        );
+
+      for (const checkin of existingCheckins) {
+        console.log(`Deactivating checkin ${checkin.id}`);
+        await db
+          .update(checkins)
+          .set({ isActive: false })
+          .where(eq(checkins.id, checkin.id));
+        console.log(`Deactivated existing checkin for player ${player.username}`);
+      }
+
+      // Create new checkin with next queue position
+      const [newCheckin] = await db
+        .insert(checkins)
+        .values({
+          userId: player.userId,
+          clubIndex: 34,
+          checkInTime: new Date(),
+          isActive: true,
+          checkInDate: getDateString(getCentralTime()),
+          gameSetId: activeGameSet.id,
+          queuePosition: activeGameSet.currentQueuePosition + losingPlayers.indexOf(player),
+          type: 'manual',
+          gameId  // Associate the checkin with this game
+        })
+        .returning();
+
+      console.log(`Created new checkin for player ${player.username}:`, newCheckin);
+    }
+
+    // Update game set's current queue position
+    await db
+      .update(gameSets)
+      .set({
+        currentQueuePosition: activeGameSet.currentQueuePosition + losingPlayers.length
+      })
+      .where(eq(gameSets.id, activeGameSet.id));
+
     return game;
   }
 
@@ -340,9 +425,9 @@ export class DatabaseStorage implements IStorage {
       })
       .from(gamePlayers)
       .innerJoin(users, eq(gamePlayers.userId, users.id))
-      .innerJoin(checkins, and(
+      .leftJoin(checkins, and(
         eq(checkins.userId, gamePlayers.userId),
-        eq(checkins.gameSetId, game.setId)
+        eq(checkins.gameId, gameId)  // Only join with checkins specifically for this game
       ))
       .where(eq(gamePlayers.gameId, gameId));
 
