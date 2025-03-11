@@ -433,7 +433,10 @@ export class DatabaseStorage implements IStorage {
 
     return {
       ...game,
-      players
+      players: players.map(player => ({
+        ...player,
+        queuePosition: player.queuePosition || 0 // Ensure queuePosition is never null
+      }))
     };
   }
 
