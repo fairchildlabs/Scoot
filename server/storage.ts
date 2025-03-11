@@ -256,6 +256,23 @@ export class DatabaseStorage implements IStorage {
   async updateCheckins(setId: number, gameState: GameState): Promise<void> {
     const today = getDateString(getCentralTime());
 
+    // Get current active checkins to preserve queue positions
+    const currentCheckins = await db
+      .select()
+      .from(checkins)
+      .where(
+        and(
+          eq(checkins.clubIndex, 34),
+          eq(checkins.checkInDate, today),
+          eq(checkins.isActive, true)
+        )
+      );
+
+    // Create a map of userId to current queue position
+    const currentPositions = new Map(
+      currentCheckins.map(c => [c.userId, c.queuePosition])
+    );
+
     // Deactivate all current checkins
     await db
       .update(checkins)
@@ -268,7 +285,7 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    // Create new checkins for players in order based on game state
+    // Create new checkins for players, preserving their queue positions where possible
     const allPlayers = [
       ...gameState.teamA.players,
       ...gameState.teamB.players,
@@ -276,7 +293,21 @@ export class DatabaseStorage implements IStorage {
     ];
 
     for (const player of allPlayers) {
-      await this.createCheckin(player.id, 34);
+      // Use the player's existing queue position if available, otherwise use new position
+      const queuePosition = currentPositions.get(player.id);
+
+      await db
+        .insert(checkins)
+        .values({
+          userId: player.id,
+          clubIndex: 34,
+          checkInTime: getCentralTime(),
+          isActive: true,
+          checkInDate: today,
+          gameSetId: setId,
+          queuePosition: queuePosition || gameState.currentQueuePosition,
+          type: 'manual'
+        });
     }
   }
 
