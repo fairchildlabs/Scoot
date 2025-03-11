@@ -14,13 +14,6 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import NewGamePage from "./new-game";
 
-// Add after TabsTrigger imports:
-declare global {
-  interface Window {
-    REPL_ID?: string;
-  }
-}
-
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
 
@@ -397,7 +390,7 @@ export default function GamesPage() {
               Clear Game Set
             </Button>
             {/* Only show reset button in Replit environment */}
-            {window.REPL_ID && (
+            {import.meta.env.REPL_ID && (
               <Button onClick={handleResetDatabase} variant="destructive">
                 Reset Database
               </Button>
