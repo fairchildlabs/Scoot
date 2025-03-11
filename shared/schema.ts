@@ -10,7 +10,20 @@ export const CheckinType = {
   LOSS_PROMOTED: 'loss_promoted'
 } as const;
 
+// Define queue transaction types
+export const QueueTransactionType = {
+  CHECKIN: 'checkin',
+  CHECKOUT: 'checkout',
+  SWAP: 'swap',
+  HORIZONTAL_SWAP: 'horizontal_swap',
+  VERTICAL_SWAP: 'vertical_swap',
+  BUMP: 'bump',
+  WIN_PROMOTED: 'win_promoted',
+  LOSS_PROMOTED: 'loss_promoted'
+} as const;
+
 export type CheckinType = typeof CheckinType[keyof typeof CheckinType];
+export type QueueTransactionType = typeof QueueTransactionType[keyof typeof QueueTransactionType];
 
 // Define all tables first
 export const users = pgTable("users", {
@@ -30,6 +43,17 @@ export const users = pgTable("users", {
   isEngineer: boolean("is_engineer").notNull().default(false),
   isRoot: boolean("is_root").notNull().default(false),
   autoup: boolean("autoup").notNull().default(true),
+});
+
+// Add queue transaction logs table
+export const queueTransactionLogs = pgTable("queue_transaction_logs", {
+  id: serial("id").primaryKey(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  transactionType: text("transaction_type").notNull(),
+  gameSetId: integer("game_set_id").notNull(),
+  affectedUsers: json("affected_users").notNull(), // Array of user IDs involved in transaction
+  resultingQueue: json("resulting_queue").notNull(), // Array of user IDs in queue order
+  description: text("description"), // Optional description of the transaction
 });
 
 export const gameSets = pgTable("game_sets", {
@@ -133,6 +157,26 @@ export const insertGameSchema = createInsertSchema(games, {
 export const insertCheckinSchema = createInsertSchema(checkins);
 export const insertGamePlayerSchema = createInsertSchema(gamePlayers);
 
+// Add transaction log schema
+export const insertQueueTransactionLogSchema = createInsertSchema(queueTransactionLogs).extend({
+  transactionType: z.enum([
+    'checkin',
+    'checkout',
+    'swap',
+    'horizontal_swap',
+    'vertical_swap',
+    'bump',
+    'win_promoted',
+    'loss_promoted'
+  ]),
+  affectedUsers: z.array(z.number()),
+  resultingQueue: z.array(z.number()),
+  description: z.string().optional()
+}).omit({
+  id: true,
+  timestamp: true,
+});
+
 // Export types after schemas are defined
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -142,3 +186,5 @@ export type GamePlayer = typeof gamePlayers.$inferSelect;
 export type GameSet = typeof gameSets.$inferSelect;
 export type InsertGameSet = z.infer<typeof insertGameSetSchema>;
 export type InsertGame = z.infer<typeof insertGameSchema>;
+export type InsertQueueTransactionLog = z.infer<typeof insertQueueTransactionLogSchema>;
+export type QueueTransactionLog = typeof queueTransactionLogs.$inferSelect;
