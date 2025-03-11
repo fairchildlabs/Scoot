@@ -8,6 +8,7 @@ import AuthPage from "@/pages/auth-page";
 import UserManagementPage from "@/pages/user-management";
 import GamesPage from "@/pages/games-page";
 import { AuthProvider } from "./hooks/use-auth";
+import { DatabaseRefreshProvider } from "./hooks/use-database-refresh";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -25,10 +26,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router />
-        <Toaster />
-      </AuthProvider>
+      <DatabaseRefreshProvider>
+        <AuthProvider>
+          <Router />
+          <Toaster />
+        </AuthProvider>
+      </DatabaseRefreshProvider>
     </QueryClientProvider>
   );
 }

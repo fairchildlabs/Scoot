@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import NewGamePage from "./new-game";
+import { useDatabaseRefresh } from "@/hooks/use-database-refresh";
 
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
@@ -70,6 +71,7 @@ export default function GamesPage() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { triggerRefresh } = useDatabaseRefresh();
 
   if (!user?.isEngineer && !user?.isRoot) {
     setLocation("/");
@@ -87,6 +89,7 @@ export default function GamesPage() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      triggerRefresh();
       toast({
         title: "Success",
         description: "Queue cleared successfully",
@@ -112,6 +115,7 @@ export default function GamesPage() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      triggerRefresh();
       toast({
         title: "Success",
         description: "All players checked in successfully",
@@ -140,7 +144,7 @@ export default function GamesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-
+      triggerRefresh();
       toast({
         title: "Success",
         description: "Game set cleared successfully",
@@ -169,7 +173,7 @@ export default function GamesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-
+      triggerRefresh();
       toast({
         title: "Success",
         description: "Database reset successfully (preserved users)",
