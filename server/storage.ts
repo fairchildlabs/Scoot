@@ -396,6 +396,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
+    // Get the player's current checkin to preserve queue position
+    const [currentCheckin] = await db
+      .select()
+      .from(checkins)
+      .where(
+        and(
+          eq(checkins.userId, userId),
+          eq(checkins.isActive, true)
+        )
+      );
+
+    // Create game player with associated checkin
     const [gamePlayer] = await db
       .insert(gamePlayers)
       .values({
@@ -404,6 +416,24 @@ export class DatabaseStorage implements IStorage {
         team
       })
       .returning();
+
+    // Create a game-specific checkin to preserve queue position
+    if (currentCheckin) {
+      await db
+        .insert(checkins)
+        .values({
+          userId,
+          clubIndex: currentCheckin.clubIndex,
+          checkInTime: new Date(),
+          isActive: false, // This checkin is just for position reference
+          checkInDate: getDateString(getCentralTime()),
+          gameSetId: currentCheckin.gameSetId,
+          queuePosition: currentCheckin.queuePosition,
+          type: 'game',
+          gameId // Link this checkin to the specific game
+        });
+    }
+
     return gamePlayer;
   }
 
@@ -412,7 +442,7 @@ export class DatabaseStorage implements IStorage {
     const [game] = await db.select().from(games).where(eq(games.id, gameId));
     if (!game) throw new Error(`Game ${gameId} not found`);
 
-    // Get all players in this game with their user information
+    // Get all players in this game with their user information and queue positions
     const players = await db
       .select({
         id: gamePlayers.id,
@@ -427,7 +457,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(gamePlayers.userId, users.id))
       .leftJoin(checkins, and(
         eq(checkins.userId, gamePlayers.userId),
-        eq(checkins.gameId, gameId)  // Only join with checkins specifically for this game
+        eq(checkins.gameId, gameId),  // Only join with checkins specifically for this game
+        eq(checkins.type, 'game')     // Only get game-specific checkins
       ))
       .where(eq(gamePlayers.gameId, gameId));
 
