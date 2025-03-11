@@ -397,18 +397,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      console.log('Starting database reset...');
+
       // Delete all records except users
-      await db.delete(gamePlayers);
-      await db.delete(checkins);
-      await db.delete(games);
-      await db.delete(gameSets);
+      console.log('Deleting game players...');
+      const deletedGamePlayers = await db.delete(gamePlayers).returning();
+      console.log(`Deleted ${deletedGamePlayers.length} game players`);
+
+      console.log('Deleting checkins...');
+      const deletedCheckins = await db.delete(checkins).returning();
+      console.log(`Deleted ${deletedCheckins.length} checkins`);
+
+      console.log('Deleting games...');
+      const deletedGames = await db.delete(games).returning();
+      console.log(`Deleted ${deletedGames.length} games`);
+
+      console.log('Deleting game sets...');
+      const deletedGameSets = await db.delete(gameSets).returning();
+      console.log(`Deleted ${deletedGameSets.length} game sets`);
 
       // Reset sequences
+      console.log('Resetting sequences...');
       await db.execute(sql`ALTER SEQUENCE game_players_id_seq RESTART WITH 1`);
       await db.execute(sql`ALTER SEQUENCE checkins_id_seq RESTART WITH 1`);
       await db.execute(sql`ALTER SEQUENCE games_id_seq RESTART WITH 1`);
       await db.execute(sql`ALTER SEQUENCE game_sets_id_seq RESTART WITH 1`);
+      console.log('All sequences reset successfully');
 
+      console.log('Database reset completed successfully');
       res.sendStatus(200);
     } catch (error) {
       console.error('Failed to reset database:', error);
