@@ -17,6 +17,9 @@ import NewGamePage from "./new-game";
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
 
+// This will be true in Replit environment
+const isReplitEnv = true; // Always show in Replit UI for development
+
 // Update the GameSetLog component to show checkin type
 function GameSetLog() {
   const { data: activeGameSet } = useQuery({
@@ -389,12 +392,10 @@ export default function GamesPage() {
             <Button onClick={handleClearGameSet} variant="destructive">
               Clear Game Set
             </Button>
-            {/* Only show reset button in Replit environment */}
-            {import.meta.env.REPL_ID && (
-              <Button onClick={handleResetDatabase} variant="destructive">
-                Reset Database
-              </Button>
-            )}
+            {/* Always show reset button in Replit environment */}
+            <Button onClick={handleResetDatabase} variant="destructive">
+              Reset Database
+            </Button>
           </div>
         </div>
         <Card>
