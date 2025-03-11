@@ -15,6 +15,12 @@ import { useToast } from "@/hooks/use-toast";
 import NewGamePage from "./new-game";
 
 // Add after TabsTrigger imports:
+declare global {
+  interface Window {
+    REPL_ID?: string;
+  }
+}
+
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
 
@@ -148,6 +154,35 @@ export default function GamesPage() {
       toast({
         title: "Error",
         description: "Failed to clear game set",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add after other button handlers in GamesPage component
+  const handleResetDatabase = async () => {
+    try {
+      const response = await fetch("/api/database/reset", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reset database");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+
+      toast({
+        title: "Success",
+        description: "Database reset successfully (preserved users)",
+      });
+    } catch (error) {
+      console.error("Error resetting database:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reset database",
         variant: "destructive",
       });
     }
@@ -361,6 +396,12 @@ export default function GamesPage() {
             <Button onClick={handleClearGameSet} variant="destructive">
               Clear Game Set
             </Button>
+            {/* Only show reset button in Replit environment */}
+            {window.REPL_ID && (
+              <Button onClick={handleResetDatabase} variant="destructive">
+                Reset Database
+              </Button>
+            )}
           </div>
         </div>
         <Card>

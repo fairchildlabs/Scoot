@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertGameSetSchema, games, checkins, users, gameSets } from "@shared/schema";
+import { insertGameSetSchema, games, checkins, users, gameSets, gamePlayers } from "@shared/schema";
 import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
@@ -382,6 +382,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.sendStatus(200);
     } catch (error) {
       console.error('POST /api/game-sets/clear - Error:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // Add after the last endpoint
+  app.post("/api/database/reset", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
+
+    // Only allow in Replit environment
+    if (!process.env.REPL_ID) {
+      return res.status(403).send("This operation is only allowed in development environment");
+    }
+
+    try {
+      // Delete all records except users
+      await db.delete(gamePlayers);
+      await db.delete(checkins);
+      await db.delete(games);
+      await db.delete(gameSets);
+
+      // Reset sequences
+      await db.execute(sql`ALTER SEQUENCE game_players_id_seq RESTART WITH 1`);
+      await db.execute(sql`ALTER SEQUENCE checkins_id_seq RESTART WITH 1`);
+      await db.execute(sql`ALTER SEQUENCE games_id_seq RESTART WITH 1`);
+      await db.execute(sql`ALTER SEQUENCE game_sets_id_seq RESTART WITH 1`);
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Failed to reset database:', error);
       res.status(500).json({ error: (error as Error).message });
     }
   });
