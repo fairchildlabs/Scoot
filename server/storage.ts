@@ -285,17 +285,16 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    // Create new checkins for players, preserving their queue positions where possible
+    // Create new checkins for players based on their positions in the game state
+    // This preserves the order from the game state
     const allPlayers = [
       ...gameState.teamA.players,
       ...gameState.teamB.players,
       ...gameState.availablePlayers
     ];
 
-    for (const player of allPlayers) {
-      // Use the player's existing queue position if available, otherwise use new position
-      const queuePosition = currentPositions.get(player.id);
-
+    for (let i = 0; i < allPlayers.length; i++) {
+      const player = allPlayers[i];
       await db
         .insert(checkins)
         .values({
@@ -305,7 +304,7 @@ export class DatabaseStorage implements IStorage {
           isActive: true,
           checkInDate: today,
           gameSetId: setId,
-          queuePosition: queuePosition || gameState.currentQueuePosition,
+          queuePosition: i + 1, // Use position from game state order
           type: 'manual'
         });
     }
