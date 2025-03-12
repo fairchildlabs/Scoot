@@ -464,12 +464,8 @@ export class DatabaseStorage implements IStorage {
           gameId // Link this checkin to the specific game
         });
     }
-    await this.logQueueTransaction(
-      'gameplayer-creation',
-      currentCheckin?.gameSetId || 0, // Use gameSetId from checkin if available
-      [userId],
-      `Player ${userId} added to game ${gameId}`
-    );
+
+    // Log the transaction (no need to log game player creation as it's not a queue change)
     return gamePlayer;
   }
 

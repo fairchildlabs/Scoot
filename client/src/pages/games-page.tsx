@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import NewGamePage from "./new-game";
 import { useDatabaseRefresh } from "@/hooks/use-database-refresh";
+import { format } from 'date-fns'; // Added import
 
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
@@ -21,7 +22,7 @@ const gymOptions = ['fonde'] as const;
 // This will be true in Replit environment
 const isReplitEnv = true; // Always show in Replit UI for development
 
-// Update the GameSetLog component to show checkin type
+// Update the GameSetLog component to show more details
 function GameSetLog() {
   const { data: activeGameSet } = useQuery({
     queryKey: ["/api/game-sets/active"],
@@ -42,23 +43,27 @@ function GameSetLog() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-7 gap-4 font-semibold border-b pb-2">
-        <div>Position</div>
-        <div className="col-span-2">Player</div>
-        <div>Team</div>
-        <div>Court</div>
-        <div>Score</div>
-        <div>Type</div>
+      <div className="grid grid-cols-12 gap-4 font-semibold border-b pb-2">
+        <div className="col-span-1">ID</div>
+        <div className="col-span-2">Time</div>
+        <div className="col-span-3">Type</div>
+        <div className="col-span-1">Position</div>
+        <div className="col-span-3">Player</div>
+        <div className="col-span-2">Status</div>
       </div>
       <div className="space-y-2">
-        {gameSetLog?.map((entry: any) => (
-          <div key={entry.queuePosition} className="grid grid-cols-7 gap-4 py-2">
-            <div>#{entry.queuePosition}</div>
-            <div className="col-span-2">{entry.username}</div>
-            <div>{entry.team || "Pending"}</div>
-            <div>{entry.court || "-"}</div>
-            <div>{entry.score || "Pending"}</div>
-            <div>{entry.type}</div>
+        {gameSetLog?.sort((a: any, b: any) => a.id - b.id).map((entry: any) => (
+          <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
+            <div className="col-span-1 font-mono">#{entry.id}</div>
+            <div className="col-span-2 font-mono">{format(new Date(entry.timestamp), 'HH:mm:ss')}</div>
+            <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
+              {entry.transaction_type || entry.type}
+            </div>
+            <div className="col-span-1 font-mono">#{entry.queuePosition}</div>
+            <div className="col-span-3">{entry.username}</div>
+            <div className="col-span-2 text-muted-foreground">
+              {entry.team ? `Team ${entry.team}` : (entry.court ? `Court ${entry.court}` : "Pending")}
+            </div>
           </div>
         ))}
       </div>
