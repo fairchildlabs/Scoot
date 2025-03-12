@@ -33,6 +33,9 @@ function GameSetLog() {
     enabled: !!activeGameSet?.id,
   });
 
+  // Debug log to see the actual data
+  console.log('Game Set Log Data:', gameSetLog);
+
   if (!activeGameSet) {
     return (
       <div className="text-center py-4">
@@ -55,9 +58,6 @@ function GameSetLog() {
     }
   };
 
-  // Debug log to see the actual data
-  console.log('Game Set Log Data:', gameSetLog);
-
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-12 gap-4 font-semibold border-b pb-2">
@@ -71,10 +71,10 @@ function GameSetLog() {
       <div className="space-y-2">
         {gameSetLog?.sort((a: any, b: any) => a.id - b.id).map((entry: any) => (
           <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
-            <div className="col-span-1 font-mono">#{entry.id}</div>
-            <div className="col-span-2 font-mono">{entry.timestamp ? formatTime(entry.timestamp) : '--:--:--'}</div>
+            <div className="col-span-1 font-mono">#{entry.id || ''}</div>
+            <div className="col-span-2 font-mono">{entry.time ? formatTime(entry.time) : '--:--:--'}</div>
             <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
-              {entry.transaction_type || entry.type}
+              {entry.transaction_type || entry.type || '--'}
             </div>
             <div className="col-span-1 font-mono">#{entry.queuePosition}</div>
             <div className="col-span-3">{entry.username}</div>
