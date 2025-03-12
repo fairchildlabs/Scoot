@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import NewGamePage from "./new-game";
 import { useDatabaseRefresh } from "@/hooks/use-database-refresh";
-import { format } from 'date-fns'; // Added import
+import { format } from 'date-fns';
 
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
@@ -41,6 +41,17 @@ function GameSetLog() {
     );
   }
 
+  const formatTime = (timestamp: string) => {
+    try {
+      // Ensure timestamp is parsed correctly by replacing space with T
+      const date = new Date(timestamp.replace(' ', 'T'));
+      return format(date, 'HH:mm:ss');
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return '--:--:--';
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-12 gap-4 font-semibold border-b pb-2">
@@ -55,7 +66,7 @@ function GameSetLog() {
         {gameSetLog?.sort((a: any, b: any) => a.id - b.id).map((entry: any) => (
           <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
             <div className="col-span-1 font-mono">#{entry.id}</div>
-            <div className="col-span-2 font-mono">{format(new Date(entry.timestamp), 'HH:mm:ss')}</div>
+            <div className="col-span-2 font-mono">{formatTime(entry.timestamp)}</div>
             <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
               {entry.transaction_type || entry.type}
             </div>
