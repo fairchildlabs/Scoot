@@ -22,7 +22,7 @@ const gymOptions = ['fonde'] as const;
 // This will be true in Replit environment
 const isReplitEnv = true; // Always show in Replit UI for development
 
-// Update the GameSetLog component to show more details
+// GameSetLog component
 function GameSetLog() {
   const { data: activeGameSet } = useQuery({
     queryKey: ["/api/game-sets/active"],
@@ -32,6 +32,10 @@ function GameSetLog() {
     queryKey: [`/api/game-sets/${activeGameSet?.id}/log`],
     enabled: !!activeGameSet?.id,
   });
+
+  // Debug log the response
+  console.log('Active Game Set:', activeGameSet);
+  console.log('Game Set Log:', gameSetLog);
 
   if (!activeGameSet) {
     return (
@@ -52,22 +56,27 @@ function GameSetLog() {
         <div className="col-span-2">Status</div>
       </div>
       <div className="space-y-2">
-        {(gameSetLog || [])?.sort((a: any, b: any) => a.id - b.id).map((entry: any) => (
-          <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
-            <div className="col-span-1 font-mono">{entry.id}</div>
-            <div className="col-span-2 font-mono">
-              {entry.time && typeof entry.time === 'string' ? entry.time.split('T')[1].slice(0, 8) : '--:--:--'}
+        {Array.isArray(gameSetLog) && gameSetLog.map((entry: any) => {
+          // Log individual entries for debugging
+          console.log('Processing log entry:', entry);
+
+          return (
+            <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
+              <div className="col-span-1 font-mono">{entry.id}</div>
+              <div className="col-span-2 font-mono">
+                {entry.time && entry.time.split('T')[1].slice(0, 8)}
+              </div>
+              <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
+                {entry.type}
+              </div>
+              <div className="col-span-1 font-mono">#{entry.queuePosition || '--'}</div>
+              <div className="col-span-3">{entry.username || '--'}</div>
+              <div className="col-span-2 text-muted-foreground">
+                {entry.team ? `Team ${entry.team}` : (entry.court ? `Court ${entry.court}` : "Pending")}
+              </div>
             </div>
-            <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
-              {entry.transaction_type || '--'}
-            </div>
-            <div className="col-span-1 font-mono">#{entry.queuePosition || '--'}</div>
-            <div className="col-span-3">{entry.username || '--'}</div>
-            <div className="col-span-2 text-muted-foreground">
-              {entry.team ? `Team ${entry.team}` : (entry.court ? `Court ${entry.court}` : "Pending")}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
