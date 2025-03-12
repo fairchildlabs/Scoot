@@ -71,10 +71,10 @@ function GameSetLog() {
       <div className="space-y-2">
         {gameSetLog?.sort((a: any, b: any) => Number(a.id) - Number(b.id)).map((entry: any) => (
           <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
-            <div className="col-span-1 font-mono">#{String(entry.id || '')}</div>
+            <div className="col-span-1 font-mono">#{String(entry.logId || '')}</div>
             <div className="col-span-2 font-mono">{entry.checkInTime ? formatTime(entry.checkInTime) : '--:--:--'}</div>
             <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
-              {String(entry.type || '').toUpperCase() || '--'}
+              {entry.transactionType || '--'}
             </div>
             <div className="col-span-1 font-mono">#{entry.queuePosition}</div>
             <div className="col-span-3">{entry.username}</div>
