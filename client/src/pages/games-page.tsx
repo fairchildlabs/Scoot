@@ -22,7 +22,7 @@ const gymOptions = ['fonde'] as const;
 // This will be true in Replit environment
 const isReplitEnv = true; // Always show in Replit UI for development
 
-// Update the GameSetLog component
+// GameSetLog component
 function GameSetLog() {
   const { data: activeGameSet } = useQuery({
     queryKey: ["/api/game-sets/active"],
@@ -71,7 +71,7 @@ function GameSetLog() {
         <div className="col-span-2">Description</div>
       </div>
       <div className="space-y-2">
-        {Array.isArray(gameSetLog) && gameSetLog.map((entry) => (
+        {Array.isArray(gameSetLog) && gameSetLog.map((entry: any) => (
           <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
             <div className="col-span-1 font-mono">{entry.id}</div>
             <div className="col-span-2 font-mono">

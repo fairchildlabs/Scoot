@@ -6,7 +6,6 @@ import { insertGameSetSchema, games, checkins, users, gameSets, gamePlayers } fr
 import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
 import { db } from "./db";
 import { eq, and, sql, desc } from "drizzle-orm";
-import { queueTransactionLogs } from '@shared/schema'; // Import missing schema
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -288,46 +287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
-      console.log('GET /api/game-sets/:id/log - Processing request for set:', req.params.id);
       const gameSetId = parseInt(req.params.id);
-
-      // Get all transaction logs for this game set
-      const logs = await db
-        .select({
-          id: queueTransactionLogs.id,
-          timestamp: queueTransactionLogs.timestamp,
-          transactionType: queueTransactionLogs.transactionType,
-          description: queueTransactionLogs.description,
-          affectedUsers: queueTransactionLogs.affectedUsers
-        })
-        .from(queueTransactionLogs)
-        .where(eq(queueTransactionLogs.gameSetId, gameSetId))
-        .orderBy(desc(queueTransactionLogs.timestamp));
-
-      // Get user information for the affected users
-      const logsWithUserInfo = await Promise.all(
-        logs.map(async (log) => {
-          const users = await Promise.all(
-            log.affectedUsers.map(async (userId: number) => {
-              const [user] = await db
-                .select({
-                  username: users.username,
-                })
-                .from(users)
-                .where(eq(users.id, userId));
-              return user?.username || '--';
-            })
-          );
-
-          return {
-            ...log,
-            usernames: users.join(', ')
-          };
-        })
-      );
-
-      console.log('GET /api/game-sets/:id/log - Retrieved logs:', logsWithUserInfo);
-      res.json(logsWithUserInfo);
+      const log = await storage.getGameSetLog(gameSetId);
+      res.json(log);
     } catch (error) {
       console.error('GET /api/game-sets/:id/log - Error:', error);
       res.status(500).json({ error: (error as Error).message });
