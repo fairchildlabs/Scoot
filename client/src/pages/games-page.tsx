@@ -52,15 +52,17 @@ function GameSetLog() {
         <div className="col-span-2">Status</div>
       </div>
       <div className="space-y-2">
-        {gameSetLog?.sort((a: any, b: any) => a.id - b.id).map((entry: any) => (
+        {(gameSetLog || [])?.sort((a: any, b: any) => a.id - b.id).map((entry: any) => (
           <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
             <div className="col-span-1 font-mono">{entry.id}</div>
-            <div className="col-span-2 font-mono">{entry.time.split('T')[1].slice(0, 8)}</div>
-            <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
-              {entry.transaction_type}
+            <div className="col-span-2 font-mono">
+              {entry.time && typeof entry.time === 'string' ? entry.time.split('T')[1].slice(0, 8) : '--:--:--'}
             </div>
-            <div className="col-span-1 font-mono">#{entry.queuePosition}</div>
-            <div className="col-span-3">{entry.username}</div>
+            <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
+              {entry.transaction_type || '--'}
+            </div>
+            <div className="col-span-1 font-mono">#{entry.queuePosition || '--'}</div>
+            <div className="col-span-3">{entry.username || '--'}</div>
             <div className="col-span-2 text-muted-foreground">
               {entry.team ? `Team ${entry.team}` : (entry.court ? `Court ${entry.court}` : "Pending")}
             </div>
