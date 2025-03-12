@@ -33,9 +33,6 @@ function GameSetLog() {
     enabled: !!activeGameSet?.id,
   });
 
-  console.log('Active Game Set:', activeGameSet);
-  console.log('Game Set Log:', gameSetLog);
-
   if (!activeGameSet) {
     return (
       <div className="text-center py-4">
@@ -70,8 +67,7 @@ function GameSetLog() {
         <div className="col-span-1">ID</div>
         <div className="col-span-2">Time</div>
         <div className="col-span-3">Type</div>
-        <div className="col-span-1">Position</div>
-        <div className="col-span-3">Player</div>
+        <div className="col-span-4">Players</div>
         <div className="col-span-2">Description</div>
       </div>
       <div className="space-y-2">
@@ -84,8 +80,7 @@ function GameSetLog() {
             <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
               {getTypeDisplay(entry.transactionType)}
             </div>
-            <div className="col-span-1 font-mono">#{entry.queuePosition || '--'}</div>
-            <div className="col-span-3">{entry.username || '--'}</div>
+            <div className="col-span-4">{entry.usernames}</div>
             <div className="col-span-2 text-muted-foreground">
               {entry.description || '--'}
             </div>

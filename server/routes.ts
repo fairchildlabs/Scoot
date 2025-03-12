@@ -291,28 +291,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('GET /api/game-sets/:id/log - Processing request for set:', req.params.id);
       const gameSetId = parseInt(req.params.id);
 
-      // Get all transaction logs for this game set with user info
+      // Get all transaction logs for this game set
       const logs = await db
         .select({
           id: queueTransactionLogs.id,
           timestamp: queueTransactionLogs.timestamp,
           transactionType: queueTransactionLogs.transactionType,
           description: queueTransactionLogs.description,
-          affectedUsers: queueTransactionLogs.affectedUsers,
-          username: users.username,
-          queuePosition: checkins.queuePosition
+          affectedUsers: queueTransactionLogs.affectedUsers
         })
         .from(queueTransactionLogs)
-        .leftJoin(users, sql`${users.id} = ANY(${queueTransactionLogs.affectedUsers})`)
-        .leftJoin(checkins, and(
-          eq(checkins.userId, users.id),
-          eq(checkins.isActive, true)
-        ))
         .where(eq(queueTransactionLogs.gameSetId, gameSetId))
         .orderBy(desc(queueTransactionLogs.timestamp));
 
-      console.log('GET /api/game-sets/:id/log - Retrieved logs:', logs);
-      res.json(logs);
+      // Get user information for the affected users
+      const logsWithUserInfo = await Promise.all(
+        logs.map(async (log) => {
+          const users = await Promise.all(
+            log.affectedUsers.map(async (userId: number) => {
+              const [user] = await db
+                .select({
+                  username: users.username,
+                })
+                .from(users)
+                .where(eq(users.id, userId));
+              return user?.username || '--';
+            })
+          );
+
+          return {
+            ...log,
+            usernames: users.join(', ')
+          };
+        })
+      );
+
+      console.log('GET /api/game-sets/:id/log - Retrieved logs:', logsWithUserInfo);
+      res.json(logsWithUserInfo);
     } catch (error) {
       console.error('GET /api/game-sets/:id/log - Error:', error);
       res.status(500).json({ error: (error as Error).message });
