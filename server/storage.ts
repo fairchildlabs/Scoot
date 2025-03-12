@@ -141,16 +141,16 @@ export class DatabaseStorage implements IStorage {
         isActive: true,
         checkInDate: today,
         gameSetId: activeGameSet.id,
-        queuePosition: activeGameSet.currentQueuePosition,
-        type: 'manual' // Set the type for manual check-in
+        queuePosition: activeGameSet.queueNextUp, // Use queueNextUp for new check-ins
+        type: 'manual'
       })
       .returning();
 
-    // Increment the game set's current queue position
+    // Increment the game set's queueNextUp (tail pointer)
     await db
       .update(gameSets)
       .set({
-        currentQueuePosition: activeGameSet.currentQueuePosition + 1
+        queueNextUp: activeGameSet.queueNextUp + 1
       })
       .where(eq(gameSets.id, activeGameSet.id));
 
@@ -310,6 +310,8 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...gameSet,
         createdBy: userId,
+        currentQueuePosition: 1, // Head pointer - set to 1 at creation
+        queueNextUp: 1, // Tail pointer - starts at 1
       })
       .returning();
 

@@ -45,6 +45,7 @@ export const gameSets = pgTable("game_sets", {
   isActive: boolean("is_active").notNull().default(true),
   numberOfCourts: integer("number_of_courts").notNull().default(2),
   currentQueuePosition: integer("current_queue_position").notNull().default(1),
+  queueNextUp: integer("queue_next_up").notNull().default(1), // New field for tracking next check-in position
 });
 
 export const games = pgTable("games", {
@@ -114,7 +115,8 @@ export const insertGameSetSchema = createInsertSchema(gameSets, {
   createdAt: true,
   isActive: true,
   createdBy: true,
-  currentQueuePosition: true
+  currentQueuePosition: true,
+  queueNextUp: true
 });
 
 export const insertGameSchema = createInsertSchema(games, {
