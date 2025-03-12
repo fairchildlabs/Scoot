@@ -40,6 +40,7 @@ export interface IStorage {
   getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number, queuePosition: number })[] }>;
   getGameSetLog(gameSetId: number): Promise<any[]>;
   logQueueTransaction(transactionType: QueueTransactionType, gameSetId: number, affectedUsers: number[], description?: string): Promise<void>;
+  resetQueueTransactionLogs(): Promise<void>; // Added method
 }
 
 export class DatabaseStorage implements IStorage {
@@ -629,6 +630,14 @@ export class DatabaseStorage implements IStorage {
       console.error('Failed to log queue transaction:', error);
       // Don't throw - logging failure shouldn't break the main operation
     }
+  }
+
+  // Add resetQueueTransactionLogs method to DatabaseStorage class
+  async resetQueueTransactionLogs(): Promise<void> {
+    await db.execute(sql`
+      TRUNCATE TABLE queue_transaction_logs;
+      ALTER SEQUENCE queue_transaction_logs_id_seq RESTART WITH 1;
+    `);
   }
 }
 
