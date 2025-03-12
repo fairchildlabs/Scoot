@@ -33,9 +33,6 @@ function GameSetLog() {
     enabled: !!activeGameSet?.id,
   });
 
-  // Debug log to see the actual data
-  console.log('Game Set Log Data:', JSON.stringify(gameSetLog, null, 2));
-
   if (!activeGameSet) {
     return (
       <div className="text-center py-4">
@@ -43,20 +40,6 @@ function GameSetLog() {
       </div>
     );
   }
-
-  const formatTime = (timestamp: string) => {
-    try {
-      // Parse the ISO timestamp from the database
-      const date = new Date(timestamp);
-      if (isNaN(date.getTime())) {
-        throw new Error('Invalid date');
-      }
-      return format(date, 'HH:mm:ss');
-    } catch (error) {
-      console.error('Error formatting timestamp:', error, timestamp);
-      return timestamp.split('T')[1].slice(0, 8);
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -69,23 +52,20 @@ function GameSetLog() {
         <div className="col-span-2">Status</div>
       </div>
       <div className="space-y-2">
-        {gameSetLog?.sort((a: any, b: any) => Number(a.id) - Number(b.id)).map((entry: any) => {
-          console.log('Processing entry:', entry); // Debug each entry
-          return (
-            <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
-              <div className="col-span-1 font-mono">{entry.id}</div>
-              <div className="col-span-2 font-mono">{entry.time ? formatTime(entry.time) : '--:--:--'}</div>
-              <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
-                {entry.transaction_type || '--'}
-              </div>
-              <div className="col-span-1 font-mono">#{entry.queuePosition}</div>
-              <div className="col-span-3">{entry.username}</div>
-              <div className="col-span-2 text-muted-foreground">
-                {entry.team ? `Team ${entry.team}` : (entry.court ? `Court ${entry.court}` : "Pending")}
-              </div>
+        {gameSetLog?.sort((a: any, b: any) => a.id - b.id).map((entry: any) => (
+          <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
+            <div className="col-span-1 font-mono">{entry.id}</div>
+            <div className="col-span-2 font-mono">{entry.time.split('T')[1].slice(0, 8)}</div>
+            <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
+              {entry.transaction_type}
             </div>
-          );
-        })}
+            <div className="col-span-1 font-mono">#{entry.queuePosition}</div>
+            <div className="col-span-3">{entry.username}</div>
+            <div className="col-span-2 text-muted-foreground">
+              {entry.team ? `Team ${entry.team}` : (entry.court ? `Court ${entry.court}` : "Pending")}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -187,6 +167,12 @@ export default function GamesPage() {
   // Add after other button handlers in GamesPage component
   const handleResetDatabase = async () => {
     try {
+      // First clear the game set logs
+      await fetch("/api/game-sets/logs/clear", {
+        method: "POST",
+      });
+
+      // Then reset the database
       const response = await fetch("/api/database/reset", {
         method: "POST",
       });
@@ -198,10 +184,11 @@ export default function GamesPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/game-sets/logs"] });
       triggerRefresh();
       toast({
         title: "Success",
-        description: "Database reset successfully (preserved users)",
+        description: "Database and logs reset successfully",
       });
     } catch (error) {
       console.error("Error resetting database:", error);
