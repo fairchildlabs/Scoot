@@ -34,7 +34,7 @@ function GameSetLog() {
   });
 
   // Debug log to see the actual data
-  console.log('Game Set Log Data:', gameSetLog);
+  console.log('Game Set Log Data:', JSON.stringify(gameSetLog, null, 2));
 
   if (!activeGameSet) {
     return (
@@ -69,20 +69,23 @@ function GameSetLog() {
         <div className="col-span-2">Status</div>
       </div>
       <div className="space-y-2">
-        {gameSetLog?.sort((a: any, b: any) => Number(a.id) - Number(b.id)).map((entry: any) => (
-          <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
-            <div className="col-span-1 font-mono">#{String(entry.id || '')}</div>
-            <div className="col-span-2 font-mono">{entry.time ? formatTime(entry.time) : '--:--:--'}</div>
-            <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
-              {entry.transaction_type || '--'}
+        {gameSetLog?.sort((a: any, b: any) => Number(a.id) - Number(b.id)).map((entry: any) => {
+          console.log('Processing entry:', entry); // Debug each entry
+          return (
+            <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
+              <div className="col-span-1 font-mono">{entry.id}</div>
+              <div className="col-span-2 font-mono">{entry.time ? formatTime(entry.time) : '--:--:--'}</div>
+              <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
+                {entry.transaction_type || '--'}
+              </div>
+              <div className="col-span-1 font-mono">#{entry.queuePosition}</div>
+              <div className="col-span-3">{entry.username}</div>
+              <div className="col-span-2 text-muted-foreground">
+                {entry.team ? `Team ${entry.team}` : (entry.court ? `Court ${entry.court}` : "Pending")}
+              </div>
             </div>
-            <div className="col-span-1 font-mono">#{entry.queuePosition}</div>
-            <div className="col-span-3">{entry.username}</div>
-            <div className="col-span-2 text-muted-foreground">
-              {entry.team ? `Team ${entry.team}` : (entry.court ? `Court ${entry.court}` : "Pending")}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
