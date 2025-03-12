@@ -5,7 +5,8 @@ import { storage } from "./storage";
 import { insertGameSetSchema, games, checkins, users, gameSets, gamePlayers } from "@shared/schema";
 import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
 import { db } from "./db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
+import { queueTransactionLogs } from '@shared/schema'; // Import missing schema
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -287,9 +288,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
+      console.log('GET /api/game-sets/:id/log - Processing request for set:', req.params.id);
       const gameSetId = parseInt(req.params.id);
-      const log = await storage.getGameSetLog(gameSetId);
-      res.json(log);
+
+      // Get all transaction logs for this game set with user info
+      const logs = await db
+        .select({
+          id: queueTransactionLogs.id,
+          timestamp: queueTransactionLogs.timestamp,
+          transactionType: queueTransactionLogs.transactionType,
+          description: queueTransactionLogs.description,
+          affectedUsers: queueTransactionLogs.affectedUsers,
+          username: users.username,
+          queuePosition: checkins.queuePosition
+        })
+        .from(queueTransactionLogs)
+        .leftJoin(users, sql`${users.id} = ANY(${queueTransactionLogs.affectedUsers})`)
+        .leftJoin(checkins, and(
+          eq(checkins.userId, users.id),
+          eq(checkins.isActive, true)
+        ))
+        .where(eq(queueTransactionLogs.gameSetId, gameSetId))
+        .orderBy(desc(queueTransactionLogs.timestamp));
+
+      console.log('GET /api/game-sets/:id/log - Retrieved logs:', logs);
+      res.json(logs);
     } catch (error) {
       console.error('GET /api/game-sets/:id/log - Error:', error);
       res.status(500).json({ error: (error as Error).message });
@@ -428,6 +451,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.sendStatus(200);
     } catch (error) {
       console.error('Failed to reset database:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.post("/api/queue-transaction-logs/reset", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
+
+    try {
+      console.log('POST /api/queue-transaction-logs/reset - Resetting logs table');
+      await storage.resetQueueTransactionLogs();
+      console.log('POST /api/queue-transaction-logs/reset - Successfully reset logs');
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('POST /api/queue-transaction-logs/reset - Error:', error);
       res.status(500).json({ error: (error as Error).message });
     }
   });
