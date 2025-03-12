@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import NewGamePage from "./new-game";
 import { useDatabaseRefresh } from "@/hooks/use-database-refresh";
-import { format } from 'date-fns';
 
 const pointSystemOptions = ['1s only', '2s only', '2s and 3s'] as const;
 const gymOptions = ['fonde'] as const;
@@ -22,7 +21,7 @@ const gymOptions = ['fonde'] as const;
 // This will be true in Replit environment
 const isReplitEnv = true; // Always show in Replit UI for development
 
-// GameSetLog component
+// Update the GameSetLog component to show checkin type
 function GameSetLog() {
   const { data: activeGameSet } = useQuery({
     queryKey: ["/api/game-sets/active"],
@@ -41,49 +40,25 @@ function GameSetLog() {
     );
   }
 
-  // Function to convert type to display string
-  const getTypeDisplay = (type: string) => {
-    if (!type) return '--';
-
-    const typeMap: Record<string, string> = {
-      'checkin': 'CHECK-IN',
-      'checkout': 'CHECK-OUT',
-      'swap': 'SWAP',
-      'horizontal_swap': 'HORIZONTAL SWAP',
-      'vertical_swap': 'VERTICAL SWAP',
-      'bump': 'BUMP',
-      'win_promoted': 'WIN PROMOTED',
-      'loss_promoted': 'LOSS PROMOTED'
-    };
-
-    // Safely convert to lowercase and look up in map
-    const lowerType = type?.toLowerCase();
-    return typeMap[lowerType] || type?.toUpperCase() || '--';
-  };
-
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-12 gap-4 font-semibold border-b pb-2">
-        <div className="col-span-1">ID</div>
-        <div className="col-span-2">Time</div>
-        <div className="col-span-3">Type</div>
-        <div className="col-span-4">Players</div>
-        <div className="col-span-2">Description</div>
+      <div className="grid grid-cols-7 gap-4 font-semibold border-b pb-2">
+        <div>Position</div>
+        <div className="col-span-2">Player</div>
+        <div>Team</div>
+        <div>Court</div>
+        <div>Score</div>
+        <div>Type</div>
       </div>
       <div className="space-y-2">
-        {Array.isArray(gameSetLog) && gameSetLog.map((entry: any) => (
-          <div key={entry.id} className="grid grid-cols-12 gap-4 py-2 hover:bg-secondary/10">
-            <div className="col-span-1 font-mono">{entry.id}</div>
-            <div className="col-span-2 font-mono">
-              {entry.timestamp && new Date(entry.timestamp).toLocaleTimeString()}
-            </div>
-            <div className="col-span-3 uppercase font-mono tracking-wide text-primary">
-              {getTypeDisplay(entry.transactionType)}
-            </div>
-            <div className="col-span-4">{entry.usernames}</div>
-            <div className="col-span-2 text-muted-foreground">
-              {entry.description || '--'}
-            </div>
+        {gameSetLog?.map((entry: any) => (
+          <div key={entry.queuePosition} className="grid grid-cols-7 gap-4 py-2">
+            <div>#{entry.queuePosition}</div>
+            <div className="col-span-2">{entry.username}</div>
+            <div>{entry.team || "Pending"}</div>
+            <div>{entry.court || "-"}</div>
+            <div>{entry.score || "Pending"}</div>
+            <div>{entry.type}</div>
           </div>
         ))}
       </div>
@@ -184,43 +159,30 @@ export default function GamesPage() {
     }
   };
 
-  // Update handleResetDatabase function
+  // Add after other button handlers in GamesPage component
   const handleResetDatabase = async () => {
     try {
-      // First reset the logs table and its sequence
-      const resetLogsResponse = await fetch("/api/queue-transaction-logs/reset", {
+      const response = await fetch("/api/database/reset", {
         method: "POST",
       });
 
-      if (!resetLogsResponse.ok) {
-        throw new Error("Failed to reset logs");
-      }
-
-      // Then reset the database
-      const resetResponse = await fetch("/api/database/reset", {
-        method: "POST",
-      });
-
-      if (!resetResponse.ok) {
+      if (!response.ok) {
         throw new Error("Failed to reset database");
       }
 
-      // Invalidate all queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/game-sets/${activeGameSet?.id}/log`] });
       triggerRefresh();
-
       toast({
         title: "Success",
-        description: "Database and logs reset successfully",
+        description: "Database reset successfully (preserved users)",
       });
     } catch (error) {
       console.error("Error resetting database:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to reset database",
+        description: "Failed to reset database",
         variant: "destructive",
       });
     }

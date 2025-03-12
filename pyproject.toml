@@ -6,5 +6,4 @@ requires-python = ">=3.11"
 dependencies = [
     "flask-login>=0.6.3",
     "flask-wtf>=1.2.2",
-    "trafilatura>=2.0.0",
 ]

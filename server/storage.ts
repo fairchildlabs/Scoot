@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, checkins, type Checkin, type Game, games, type GamePlayer, gamePlayers, type GameSet, gameSets, type InsertGameSet, queueTransactionLogs, type QueueTransactionLog, type QueueTransactionType } from "@shared/schema";
+import { users, type User, type InsertUser, checkins, type Checkin, type Game, games, type GamePlayer, gamePlayers, type GameSet, gameSets, type InsertGameSet } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, desc } from "drizzle-orm";
 import session from "express-session";
@@ -39,8 +39,6 @@ export interface IStorage {
   createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer>;
   getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number, queuePosition: number })[] }>;
   getGameSetLog(gameSetId: number): Promise<any[]>;
-  logQueueTransaction(transactionType: QueueTransactionType, gameSetId: number, affectedUsers: number[], description?: string): Promise<void>;
-  resetQueueTransactionLogs(): Promise<void>; // Added method
 }
 
 export class DatabaseStorage implements IStorage {
@@ -156,38 +154,17 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(gameSets.id, activeGameSet.id));
 
-    // Log the transaction after successful checkin
-    await this.logQueueTransaction(
-      'checkin',
-      activeGameSet.id,
-      [userId],
-      `User ${userId} checked in`
-    );
-
     console.log(`Created new checkin:`, checkin);
     return checkin;
   }
 
   async deactivateCheckin(checkinId: number): Promise<void> {
     console.log(`Deactivating checkin ${checkinId}`);
-    const checkin = await db.select().from(checkins).where(eq(checkins.id, checkinId)).limit(1);
-
     await db
       .update(checkins)
       .set({ isActive: false })
       .where(eq(checkins.id, checkinId));
-
     console.log(`Successfully deactivated checkin ${checkinId}`);
-
-    // Log checkout transaction if checkin exists
-    if(checkin.length > 0) {
-      await this.logQueueTransaction(
-        'checkout',
-        checkin[0].gameSetId,
-        [checkin[0].userId],
-        `User ${checkin[0].userId} checked out`
-      );
-    }
   }
 
   async createGame(setId: number, court: string, state: string): Promise<Game> {
@@ -222,19 +199,27 @@ export class DatabaseStorage implements IStorage {
     const winningTeam = team1Score > team2Score ? 1 : 2;
     const losingTeam = winningTeam === 1 ? 2 : 1;
 
-    // Get all team players
-    const allPlayers = await db
+    // Get losing team players
+    const losingPlayers = await db
       .select({
         userId: gamePlayers.userId,
-        username: users.username,
-        team: gamePlayers.team
+        username: users.username
       })
       .from(gamePlayers)
       .innerJoin(users, eq(gamePlayers.userId, users.id))
-      .where(eq(gamePlayers.gameId, gameId));
+      .where(
+        and(
+          eq(gamePlayers.gameId, gameId),
+          eq(gamePlayers.team, losingTeam)
+        )
+      );
 
-    const winningPlayers = allPlayers.filter(p => p.team === winningTeam);
-    const losingPlayers = allPlayers.filter(p => p.team === losingTeam);
+    console.log('Game ended:', {
+      gameId,
+      winningTeam,
+      losingTeam,
+      losingPlayers: losingPlayers.map(p => p.username)
+    });
 
     // Get active game set
     const activeGameSet = await this.getActiveGameSet();
@@ -242,17 +227,9 @@ export class DatabaseStorage implements IStorage {
       throw new Error("No active game set available");
     }
 
-    // Log win promotion for winning team
-    await this.logQueueTransaction(
-      'win-promoted',
-      activeGameSet.id,
-      winningPlayers.map(p => p.userId),
-      `Game ${gameId} winners promoted`
-    );
-
-    // Re-add losing players to queue and log loss promotion
+    // Re-add losing players to queue
     for (const player of losingPlayers) {
-      // Deactivate existing checkins
+      // Deactivate any existing checkins for this player
       const existingCheckins = await db
         .select()
         .from(checkins)
@@ -264,14 +241,16 @@ export class DatabaseStorage implements IStorage {
         );
 
       for (const checkin of existingCheckins) {
+        console.log(`Deactivating checkin ${checkin.id}`);
         await db
           .update(checkins)
           .set({ isActive: false })
           .where(eq(checkins.id, checkin.id));
+        console.log(`Deactivated existing checkin for player ${player.username}`);
       }
 
       // Create new checkin with next queue position
-      await db
+      const [newCheckin] = await db
         .insert(checkins)
         .values({
           userId: player.userId,
@@ -282,8 +261,11 @@ export class DatabaseStorage implements IStorage {
           gameSetId: activeGameSet.id,
           queuePosition: activeGameSet.currentQueuePosition + losingPlayers.indexOf(player),
           type: 'manual',
-          gameId
-        });
+          gameId  // Associate the checkin with this game
+        })
+        .returning();
+
+      console.log(`Created new checkin for player ${player.username}:`, newCheckin);
     }
 
     // Update game set's current queue position
@@ -293,14 +275,6 @@ export class DatabaseStorage implements IStorage {
         currentQueuePosition: activeGameSet.currentQueuePosition + losingPlayers.length
       })
       .where(eq(gameSets.id, activeGameSet.id));
-
-    // Log loss promotion after queue updates
-    await this.logQueueTransaction(
-      'loss-promoted',
-      activeGameSet.id,
-      losingPlayers.map(p => p.userId),
-      `Game ${gameId} losers re-added to queue`
-    );
 
     return game;
   }
@@ -419,12 +393,6 @@ export class DatabaseStorage implements IStorage {
           type: 'manual'
         });
     }
-    await this.logQueueTransaction(
-      'checkin-update',
-      setId,
-      allPlayers.map(p => p.id),
-      `Checkins updated for game set ${setId}`
-    );
   }
 
   async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
@@ -466,7 +434,6 @@ export class DatabaseStorage implements IStorage {
         });
     }
 
-    // Log the transaction (no need to log game player creation as it's not a queue change)
     return gamePlayer;
   }
 
@@ -583,61 +550,6 @@ export class DatabaseStorage implements IStorage {
         type: checkin.type
       };
     });
-  }
-
-  async logQueueTransaction(
-    transactionType: QueueTransactionType,
-    gameSetId: number,
-    affectedUsers: number[],
-    description?: string
-  ): Promise<void> {
-    try {
-      console.log(`Logging queue transaction: ${transactionType}`);
-
-      // Get current queue state after the transaction
-      const currentQueue = await this.getCheckins(34);
-      const resultingQueue = currentQueue.map(c => c.userId);
-
-      // Create transaction log
-      await db
-        .insert(queueTransactionLogs)
-        .values({
-          transactionType,
-          gameSetId,
-          affectedUsers,
-          resultingQueue: JSON.stringify(resultingQueue), // Store as JSON string
-          description
-        });
-
-      // Log the transaction details with player names and positions
-      console.log('Queue Transaction Log:', {
-        type: transactionType,
-        affected: await Promise.all(
-          affectedUsers.map(async (userId) => {
-            const user = await this.getUser(userId);
-            return `${user?.username} (ID: ${userId})`;
-          })
-        ),
-        resultingQueue: await Promise.all(
-          resultingQueue.map(async (userId) => {
-            const user = await this.getUser(userId);
-            const position = currentQueue.find(c => c.userId === userId)?.queuePosition;
-            return `#${position} ${user?.username}`;
-          })
-        )
-      });
-    } catch (error) {
-      console.error('Failed to log queue transaction:', error);
-      // Don't throw - logging failure shouldn't break the main operation
-    }
-  }
-
-  // Add resetQueueTransactionLogs method to DatabaseStorage class
-  async resetQueueTransactionLogs(): Promise<void> {
-    await db.execute(sql`
-      TRUNCATE TABLE queue_transaction_logs;
-      ALTER SEQUENCE queue_transaction_logs_id_seq RESTART WITH 1;
-    `);
   }
 }
 
