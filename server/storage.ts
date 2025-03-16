@@ -108,6 +108,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGame(setId: number, court: string, state: string): Promise<Game> {
+    // Get the game set first to access players_per_team
+    const [gameSet] = await db.select().from(gameSets).where(eq(gameSets.id, setId));
+    if (!gameSet) throw new Error(`Game set ${setId} not found`);
+
+    // Increment current queue position by players_per_team * 2 (for both teams)
+    const newQueuePosition = gameSet.currentQueuePosition + (gameSet.playersPerTeam * 2);
+    console.log(`Updating game set ${setId} current_queue_position from ${gameSet.currentQueuePosition} to ${newQueuePosition}`);
+
+    await db
+      .update(gameSets)
+      .set({
+        currentQueuePosition: newQueuePosition
+      })
+      .where(eq(gameSets.id, setId));
+
+    // Create the game
     const [game] = await db
       .insert(games)
       .values({
@@ -172,17 +188,6 @@ export class DatabaseStorage implements IStorage {
         .set({ isActive: false })
         .where(eq(checkins.id, player.checkinId));
     }
-
-    // Increment current queue position by players_per_team * 2 (for both teams)
-    const newQueuePosition = gameSet.currentQueuePosition + (gameSet.playersPerTeam * 2);
-    console.log(`Updating game set ${gameSet.id} current_queue_position from ${gameSet.currentQueuePosition} to ${newQueuePosition}`);
-
-    await db
-      .update(gameSets)
-      .set({
-        currentQueuePosition: newQueuePosition
-      })
-      .where(eq(gameSets.id, gameSet.id));
 
     return updatedGame;
   }
