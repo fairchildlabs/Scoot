@@ -10,10 +10,12 @@ import { type GameSet, type Game } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { useLocation } from "wouter";
 
 export default function HomePage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [gameScores, setGameScores] = useState<Record<number, { showInputs: boolean; team1Score?: number; team2Score?: number }>>({});
 
   const { data: activeGameSet } = useQuery<GameSet>({
@@ -309,21 +311,31 @@ export default function HomePage() {
           <div className="w-full max-w-2xl space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  {activeGameSet ? (
-                    <div className="flex flex-col space-y-1">
-                      <span className="text-xl">Game Set #{activeGameSet.id}</span>
-                      <span className="text-sm text-muted-foreground">
-                        Created {format(new Date(activeGameSet.createdAt), 'PPp')}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {activeGameSet.gym} - {activeGameSet.playersPerTeam} players per team - {activeGameSet.numberOfCourts} courts
-                      </span>
-                    </div>
-                  ) : (
-                    "Current Games"
+                <div className="flex justify-between items-center">
+                  <CardTitle>
+                    {activeGameSet ? (
+                      <div className="flex flex-col space-y-1">
+                        <span className="text-xl">Game Set #{activeGameSet.id}</span>
+                        <span className="text-sm text-muted-foreground">
+                          Created {format(new Date(activeGameSet.createdAt), 'PPp')}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {activeGameSet.gym} - {activeGameSet.playersPerTeam} players per team - {activeGameSet.numberOfCourts} courts
+                        </span>
+                      </div>
+                    ) : (
+                      "Current Games"
+                    )}
+                  </CardTitle>
+                  {canEndGames && (
+                    <Button 
+                      onClick={() => setLocation("/games")}
+                      variant="outline"
+                    >
+                      New Game
+                    </Button>
                   )}
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
