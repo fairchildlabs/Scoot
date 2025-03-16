@@ -140,12 +140,42 @@ export class DatabaseStorage implements IStorage {
   async updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game> {
     console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
 
-    // Get the game and associated game set first
+    // Get the game
     const [game] = await db.select().from(games).where(eq(games.id, gameId));
     if (!game) throw new Error(`Game ${gameId} not found`);
 
-    const [gameSet] = await db.select().from(gameSets).where(eq(gameSets.id, game.setId));
-    if (!gameSet) throw new Error(`Game set ${game.setId} not found`);
+    // Log all active checkins before update
+    const activeCheckins = await db
+      .select({
+        id: checkins.id,
+        userId: checkins.userId,
+        username: users.username,
+        isActive: checkins.isActive
+      })
+      .from(checkins)
+      .innerJoin(users, eq(checkins.userId, users.id))
+      .where(eq(checkins.gameId, gameId));
+
+    console.log(`Found ${activeCheckins.length} checkins for game ${gameId} before deactivation:`, 
+      activeCheckins.map(c => `${c.username} (Active: ${c.isActive})`));
+
+    // Deactivate ALL checkins for this game directly
+    await db
+      .update(checkins)
+      .set({ isActive: false })
+      .where(eq(checkins.gameId, gameId));
+
+    // Verify no active checkins remain for this game
+    const remainingActive = await db
+      .select()
+      .from(checkins)
+      .where(
+        and(
+          eq(checkins.gameId, gameId),
+          eq(checkins.isActive, true)
+        )
+      );
+    console.log(`Remaining active checkins after deactivation: ${remainingActive.length}`);
 
     // Update game scores and status
     const [updatedGame] = await db
@@ -158,36 +188,6 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(games.id, gameId))
       .returning();
-
-    // Get all players in this game with their checkin IDs
-    const allPlayers = await db
-      .select({
-        checkinId: checkins.id,
-        userId: checkins.userId,
-        username: users.username,
-      })
-      .from(gamePlayers)
-      .innerJoin(users, eq(gamePlayers.userId, users.id))
-      .innerJoin(checkins, and(
-        eq(checkins.userId, gamePlayers.userId),
-        eq(checkins.gameId, gameId)
-      ))
-      .where(eq(gamePlayers.gameId, gameId));
-
-    console.log('Game ended:', {
-      gameId,
-      playersCount: allPlayers.length,
-      players: allPlayers.map(p => p.username)
-    });
-
-    // Set ALL players' checkins to inactive
-    for (const player of allPlayers) {
-      console.log(`Deactivating checkin for player ${player.username}`);
-      await db
-        .update(checkins)
-        .set({ isActive: false })
-        .where(eq(checkins.id, player.checkinId));
-    }
 
     return updatedGame;
   }
