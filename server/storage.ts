@@ -72,6 +72,16 @@ export class DatabaseStorage implements IStorage {
   async getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]> {
     const today = getDateString(getCentralTime());
 
+    // Get active game set first to get current_queue_position
+    const [activeGameSet] = await db
+      .select()
+      .from(gameSets)
+      .where(eq(gameSets.isActive, true));
+
+    if (!activeGameSet) {
+      throw new Error("No active game set available");
+    }
+
     const results = await db
       .select({
         id: checkins.id,
@@ -83,7 +93,8 @@ export class DatabaseStorage implements IStorage {
         queuePosition: checkins.queuePosition,
         username: users.username,
         gameSetId: checkins.gameSetId,
-        type: checkins.type
+        type: checkins.type,
+        gameId: checkins.gameId
       })
       .from(checkins)
       .innerJoin(users, eq(checkins.userId, users.id))
@@ -91,10 +102,19 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(checkins.clubIndex, clubIndex),
           eq(checkins.isActive, true),
-          eq(checkins.checkInDate, today)
+          eq(checkins.checkInDate, today),
+          sql`${checkins.queuePosition} >= ${activeGameSet.currentQueuePosition}`
         )
       )
       .orderBy(checkins.queuePosition);
+
+    console.log('getCheckins - Found checkins:', 
+      results.map(r => ({
+        username: r.username,
+        queuePosition: r.queuePosition,
+        type: r.type
+      }))
+    );
 
     return results;
   }
