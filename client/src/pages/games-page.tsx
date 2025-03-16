@@ -73,6 +73,10 @@ export default function GamesPage() {
   const { toast } = useToast();
   const { triggerRefresh } = useDatabaseRefresh();
 
+  // Get tab from URL
+  const searchParams = new URLSearchParams(window.location.search);
+  const defaultTab = searchParams.get('tab') || 'new-game-set';
+
   if (!user?.isEngineer && !user?.isRoot) {
     setLocation("/");
     return null;
@@ -404,7 +408,7 @@ export default function GamesPage() {
         </div>
         <Card>
           <CardContent className="p-6">
-            <Tabs defaultValue="new-game-set">
+            <Tabs defaultValue={defaultTab}>
               <TabsList className="mb-4">
                 <TabsTrigger value="new-game-set">New Game Set</TabsTrigger>
                 <TabsTrigger value="new-game">New Game</TabsTrigger>

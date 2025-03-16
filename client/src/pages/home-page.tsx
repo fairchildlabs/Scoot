@@ -329,7 +329,7 @@ export default function HomePage() {
                   </CardTitle>
                   {canEndGames && (
                     <Button 
-                      onClick={() => setLocation("/games")}
+                      onClick={() => setLocation("/games?tab=new-game")}
                       variant="outline"
                     >
                       New Game
