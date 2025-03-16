@@ -234,10 +234,13 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Increment current queue position by players_per_team * 2 (for both teams)
+    const newQueuePosition = gameSet.currentQueuePosition + (gameSet.playersPerTeam * 2);
+    console.log(`Updating game set ${gameSet.id} current_queue_position from ${gameSet.currentQueuePosition} to ${newQueuePosition}`);
+
     await db
       .update(gameSets)
       .set({
-        currentQueuePosition: gameSet.currentQueuePosition + (gameSet.playersPerTeam * 2)
+        currentQueuePosition: newQueuePosition
       })
       .where(eq(gameSets.id, gameSet.id));
 
