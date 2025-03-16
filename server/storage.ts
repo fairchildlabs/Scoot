@@ -79,7 +79,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(gameSets.isActive, true));
 
     if (!activeGameSet) {
-      throw new Error("No active game set available");
+      console.log('getCheckins - No active game set, returning empty list');
+      return [];
     }
 
     console.log('getCheckins - Active game set:', {
