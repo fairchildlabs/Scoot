@@ -184,7 +184,15 @@ export class DatabaseStorage implements IStorage {
   async updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game> {
     console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
 
-    const [game] = await db
+    // Get the game and associated game set first
+    const [game] = await db.select().from(games).where(eq(games.id, gameId));
+    if (!game) throw new Error(`Game ${gameId} not found`);
+
+    const [gameSet] = await db.select().from(gameSets).where(eq(gameSets.id, game.setId));
+    if (!gameSet) throw new Error(`Game set ${game.setId} not found`);
+
+    // Update game scores and status
+    const [updatedGame] = await db
       .update(games)
       .set({
         team1Score,
@@ -195,17 +203,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(games.id, gameId))
       .returning();
 
-    // Determine winning and losing teams
-    const winningTeam = team1Score > team2Score ? 1 : 2;
-    const losingTeam = winningTeam === 1 ? 2 : 1;
-
-    // Get losing team players' checkins
-    const losingPlayersCheckins = await db
+    // Get all players in this game
+    const allPlayers = await db
       .select({
         checkinId: checkins.id,
         userId: checkins.userId,
         username: users.username,
-        queuePosition: checkins.queuePosition
       })
       .from(gamePlayers)
       .innerJoin(users, eq(gamePlayers.userId, users.id))
@@ -213,50 +216,32 @@ export class DatabaseStorage implements IStorage {
         eq(checkins.userId, gamePlayers.userId),
         eq(checkins.gameId, gameId)
       ))
-      .where(
-        and(
-          eq(gamePlayers.gameId, gameId),
-          eq(gamePlayers.team, losingTeam)
-        )
-      );
+      .where(eq(gamePlayers.gameId, gameId));
 
     console.log('Game ended:', {
       gameId,
-      winningTeam,
-      losingTeam,
-      losingPlayers: losingPlayersCheckins.map(p => p.username)
+      playersCount: allPlayers.length,
+      players: allPlayers.map(p => p.username)
     });
 
-    // Get active game set
-    const activeGameSet = await this.getActiveGameSet();
-    if (!activeGameSet) {
-      throw new Error("No active game set available");
-    }
-
-    // Update existing checkins for losing players (remove game_id but keep them active)
-    for (const player of losingPlayersCheckins) {
-      console.log(`Updating checkin for losing player ${player.username}`);
+    // Set all players' checkins to inactive
+    for (const player of allPlayers) {
+      console.log(`Deactivating checkin for player ${player.username}`);
       await db
         .update(checkins)
-        .set({
-          gameId: null, // Remove game association
-          isActive: true // Keep them active in the queue
-        })
+        .set({ isActive: false })
         .where(eq(checkins.id, player.checkinId));
     }
 
-    // Update game set's current queue position
-    // Only if there are losing players to re-add to the queue
-    if (losingPlayersCheckins.length > 0) {
-      await db
-        .update(gameSets)
-        .set({
-          currentQueuePosition: activeGameSet.currentQueuePosition + losingPlayersCheckins.length
-        })
-        .where(eq(gameSets.id, activeGameSet.id));
-    }
+    // Increment current queue position by players_per_team
+    await db
+      .update(gameSets)
+      .set({
+        currentQueuePosition: gameSet.currentQueuePosition + gameSet.playersPerTeam
+      })
+      .where(eq(gameSets.id, gameSet.id));
 
-    return game;
+    return updatedGame;
   }
 
   async getAllUsers(): Promise<User[]> {
