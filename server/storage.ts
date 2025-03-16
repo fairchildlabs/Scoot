@@ -25,6 +25,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
   getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]>;
+  createCheckin(userId: number, clubIndex: number): Promise<Checkin>;
   deactivateCheckin(checkinId: number): Promise<void>;
   createGame(setId: number, court: string, state: string): Promise<Game>;
   updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game>;
@@ -394,6 +395,66 @@ export class DatabaseStorage implements IStorage {
         type: checkin.type
       };
     });
+  }
+
+  async createCheckin(userId: number, clubIndex: number): Promise<Checkin> {
+    const now = getCentralTime();
+    const today = getDateString(now);
+
+    console.log(`Attempting to create checkin for user ${userId} at club ${clubIndex}`);
+
+    // Get active game set first
+    const activeGameSet = await this.getActiveGameSet();
+    if (!activeGameSet) {
+      throw new Error("No active game set available for check-ins");
+    }
+
+    // Check for existing active checkin for this user
+    const existingCheckins = await db
+      .select()
+      .from(checkins)
+      .where(
+        and(
+          eq(checkins.userId, userId),
+          eq(checkins.clubIndex, clubIndex),
+          eq(checkins.isActive, true),
+          eq(checkins.checkInDate, today)
+        )
+      );
+
+    // If user already has an active checkin, return it
+    if (existingCheckins.length > 0) {
+      console.log(`User ${userId} already has an active checkin for today:`, existingCheckins[0]);
+      return existingCheckins[0];
+    }
+
+    // Create new checkin with next queue position
+    console.log(`Creating new checkin for user ${userId}`);
+    const [checkin] = await db
+      .insert(checkins)
+      .values({
+        userId,
+        clubIndex,
+        checkInTime: now,
+        isActive: true,
+        checkInDate: today,
+        gameSetId: activeGameSet.id,
+        queuePosition: activeGameSet.queueNextUp,
+        type: 'manual',
+        gameId: null // Ensure gameId starts as null
+      })
+      .returning();
+
+    // Increment the game set's queueNextUp (tail pointer)
+    await db
+      .update(gameSets)
+      .set({
+        queueNextUp: activeGameSet.queueNextUp + 1
+      })
+      .where(eq(gameSets.id, activeGameSet.id));
+
+    console.log(`Created new checkin:`, checkin);
+    return checkin;
   }
 }
 
