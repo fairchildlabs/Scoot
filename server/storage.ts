@@ -159,7 +159,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(games.id, gameId))
       .returning();
 
-    // Get all players in this game
+    // Get all players in this game with their checkin IDs
     const allPlayers = await db
       .select({
         checkinId: checkins.id,
@@ -180,7 +180,7 @@ export class DatabaseStorage implements IStorage {
       players: allPlayers.map(p => p.username)
     });
 
-    // Set all players' checkins to inactive
+    // Set ALL players' checkins to inactive
     for (const player of allPlayers) {
       console.log(`Deactivating checkin for player ${player.username}`);
       await db
