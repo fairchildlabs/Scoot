@@ -98,6 +98,7 @@ export class DatabaseStorage implements IStorage {
         checkInDate: checkins.checkInDate,
         queuePosition: checkins.queuePosition,
         username: users.username,
+        birthYear: users.birthYear,
         gameSetId: checkins.gameSetId,
         type: checkins.type,
         gameId: checkins.gameId
@@ -118,7 +119,8 @@ export class DatabaseStorage implements IStorage {
         username: r.username,
         queuePosition: r.queuePosition,
         type: r.type,
-        isActive: r.isActive
+        isActive: r.isActive,
+        gameId: r.gameId
       }))
     );
 
