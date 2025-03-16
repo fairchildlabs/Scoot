@@ -176,62 +176,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
 
-      // Get the current game with player info
-      const game = await storage.getGame(gameId);
-      if (!game) {
-        return res.status(404).json({ error: "Game not found" });
-      }
-
       // Update game with scores and set state to 'final'
-      const [updatedGame] = await db
-        .update(games)
-        .set({
-          team1Score,
-          team2Score,
-          endTime: new Date(),
-          state: 'final'
-        })
-        .where(eq(games.id, gameId))
-        .returning();
-
-      // Determine winning and losing teams
-      const winningTeam = team1Score > team2Score ? 1 : 2;
-      const losingTeam = winningTeam === 1 ? 2 : 1;
-
-      // Get all players from the losing team
-      const losingPlayers = game.players.filter(p => p.team === losingTeam);
-
-      console.log('Game ended:', {
-        gameId,
-        winningTeam,
-        losingTeam,
-        losingPlayers: losingPlayers.map(p => p.username)
-      });
-
-      // First deactivate existing checkins for losing players
-      for (const player of losingPlayers) {
-        const existingCheckins = await db
-          .select()
-          .from(checkins)
-          .where(
-            and(
-              eq(checkins.userId, player.userId),
-              eq(checkins.isActive, true),
-              eq(checkins.clubIndex, 34)
-            )
-          );
-
-        // Deactivate any existing active checkins
-        for (const checkin of existingCheckins) {
-          await storage.deactivateCheckin(checkin.id);
-          console.log(`Deactivated existing checkin for player ${player.username}`);
-        }
-
-        // Create new checkin to put them at the end of the queue
-        await storage.createCheckin(player.userId, 34);
-        console.log(`Created new checkin for player ${player.username}`);
-      }
-
+      const updatedGame = await storage.updateGameScore(gameId, team1Score, team2Score);
       res.json(updatedGame);
     } catch (error) {
       console.error('PATCH /api/games/:id/score - Error:', error);
