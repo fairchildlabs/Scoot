@@ -38,6 +38,7 @@ export interface IStorage {
   createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer>;
   getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number, queuePosition: number })[] }>;
   getGameSetLog(gameSetId: number): Promise<any[]>;
+  determinePromotionType(gameId: number): Promise<{ type: 'win_promoted' | 'loss_promoted', team: 1 | 2 } | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -140,9 +141,12 @@ export class DatabaseStorage implements IStorage {
   async updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game> {
     console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
 
-    // Get the game
+    // Get the game and game set
     const [game] = await db.select().from(games).where(eq(games.id, gameId));
     if (!game) throw new Error(`Game ${gameId} not found`);
+
+    const [gameSet] = await db.select().from(gameSets).where(eq(gameSets.id, game.setId));
+    if (!gameSet) throw new Error(`Game set ${game.setId} not found`);
 
     // Log all active checkins before update
     const activeCheckins = await db
@@ -156,7 +160,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(checkins.userId, users.id))
       .where(eq(checkins.gameId, gameId));
 
-    console.log(`Found ${activeCheckins.length} checkins for game ${gameId} before deactivation:`, 
+    console.log(`Found ${activeCheckins.length} checkins for game ${gameId} before deactivation:`,
       activeCheckins.map(c => `${c.username} (Active: ${c.isActive})`));
 
     // Deactivate ALL checkins for this game directly
@@ -164,18 +168,6 @@ export class DatabaseStorage implements IStorage {
       .update(checkins)
       .set({ isActive: false })
       .where(eq(checkins.gameId, gameId));
-
-    // Verify no active checkins remain for this game
-    const remainingActive = await db
-      .select()
-      .from(checkins)
-      .where(
-        and(
-          eq(checkins.gameId, gameId),
-          eq(checkins.isActive, true)
-        )
-      );
-    console.log(`Remaining active checkins after deactivation: ${remainingActive.length}`);
 
     // Update game scores and status
     const [updatedGame] = await db
@@ -188,6 +180,58 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(games.id, gameId))
       .returning();
+
+    // Determine promotion type and team
+    const promotionInfo = await this.determinePromotionType(gameId);
+    if (promotionInfo) {
+      console.log('Promotion determined:', promotionInfo);
+
+      // Get players from the promoted team
+      const promotedPlayers = await db
+        .select({
+          userId: gamePlayers.userId,
+          team: gamePlayers.team
+        })
+        .from(gamePlayers)
+        .where(
+          and(
+            eq(gamePlayers.gameId, gameId),
+            eq(gamePlayers.team, promotionInfo.team)
+          )
+        );
+
+      // Increment queue positions for all checkins >= current_queue_position
+      await db
+        .update(checkins)
+        .set({
+          queuePosition: sql`${checkins.queuePosition} + ${gameSet.playersPerTeam}`
+        })
+        .where(
+          and(
+            eq(checkins.checkInDate, getDateString(getCentralTime())),
+            eq(checkins.isActive, true),
+            sql`${checkins.queuePosition} >= ${gameSet.currentQueuePosition}`
+          )
+        );
+
+      // Create new checkins for promoted team players
+      for (let i = 0; i < promotedPlayers.length; i++) {
+        const player = promotedPlayers[i];
+        await db
+          .insert(checkins)
+          .values({
+            userId: player.userId,
+            clubIndex: 34,
+            checkInTime: getCentralTime(),
+            isActive: true,
+            checkInDate: getDateString(getCentralTime()),
+            gameSetId: gameSet.id,
+            queuePosition: gameSet.currentQueuePosition + i,
+            type: promotionInfo.type,
+            gameId: null
+          });
+      }
+    }
 
     return updatedGame;
   }
@@ -319,6 +363,68 @@ export class DatabaseStorage implements IStorage {
         queuePosition: player.queuePosition || 0 // Ensure queuePosition is never null
       }))
     };
+  }
+
+  async determinePromotionType(gameId: number): Promise<{ type: 'win_promoted' | 'loss_promoted', team: 1 | 2 } | null> {
+    // Get the completed game with its game set info
+    const [game] = await db
+      .select({
+        id: games.id,
+        setId: games.setId,
+        court: games.court,
+        team1Score: games.team1Score,
+        team2Score: games.team2Score,
+        maxConsecutiveTeamWins: gameSets.maxConsecutiveTeamWins
+      })
+      .from(games)
+      .innerJoin(gameSets, eq(games.setId, gameSets.id))
+      .where(eq(games.id, gameId));
+
+    if (!game) throw new Error(`Game ${gameId} not found`);
+
+    // Get previous games on this court in this set
+    const previousGames = await db
+      .select()
+      .from(games)
+      .where(
+        and(
+          eq(games.setId, game.setId),
+          eq(games.court, game.court),
+          eq(games.state, 'final'),
+          sql`${games.id} < ${gameId}`  // Only get games before this one
+        )
+      )
+      .orderBy(desc(games.id));  // Most recent first
+
+    // Determine winning team of current game
+    const winningTeam = game.team1Score! > game.team2Score! ? 1 : 2;
+
+    // Count consecutive wins for the winning team
+    let consecutiveWins = 1;  // Start with 1 for current game
+    for (const prevGame of previousGames) {
+      const prevWinner = prevGame.team1Score! > prevGame.team2Score! ? 1 : 2;
+      if (prevWinner === winningTeam) {
+        consecutiveWins++;
+      } else {
+        break;  // Chain broken
+      }
+    }
+
+    console.log('Promotion check:', {
+      gameId,
+      court: game.court,
+      winningTeam,
+      consecutiveWins,
+      maxAllowed: game.maxConsecutiveTeamWins
+    });
+
+    // If team hasn't exceeded max consecutive wins, they get promoted
+    if (consecutiveWins < game.maxConsecutiveTeamWins) {
+      return { type: 'win_promoted', team: winningTeam };
+    }
+
+    // If team has reached max consecutive wins, losing team gets promoted
+    return { type: 'loss_promoted', team: winningTeam === 1 ? 2 : 1 };
   }
 
   async getGameSetLog(gameSetId: number): Promise<any[]> {

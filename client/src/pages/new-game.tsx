@@ -155,7 +155,11 @@ const NewGamePage = () => {
     }`}>
       <div className="flex items-center gap-4">
         <span className="font-mono text-lg">#{player.queuePosition}</span>
-        <span>{player.username}</span>
+        <span>
+          {player.username}
+          {player.type === 'win_promoted' && <span className="ml-2 text-sm text-green-400">(WP)</span>}
+          {player.type === 'loss_promoted' && <span className="ml-2 text-sm text-yellow-400">(LP)</span>}
+        </span>
       </div>
       <div className="flex items-center gap-2">
         {isOG(player.birthYear) && (
