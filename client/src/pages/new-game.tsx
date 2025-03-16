@@ -132,13 +132,39 @@ const NewGamePage = () => {
     );
   }
 
-  const playersNeeded = activeGameSet ? activeGameSet.playersPerTeam * 2 : 0;
-  const playersCheckedIn = checkins?.length || 0;
-
   // Split players into home and away teams and next up
+  const playersNeeded = activeGameSet?.playersPerTeam * 2 || 0;
   const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
   const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
-  const nextUpPlayers = checkins?.slice(playersNeeded) || [];
+  const nextUpPlayers = checkins?.filter(p =>
+    p.isActive &&
+    p.gameId === null &&
+    p.queuePosition >= (activeGameSet?.currentQueuePosition || 0)
+  ).sort((a, b) => a.queuePosition - b.queuePosition) || [];
+
+  console.log('Player groups:', {
+    activeGameSet: {
+      id: activeGameSet?.id,
+      currentQueuePosition: activeGameSet?.currentQueuePosition,
+      playersPerTeam: activeGameSet?.playersPerTeam
+    },
+    checkins: checkins?.map(p => ({
+      username: p.username,
+      pos: p.queuePosition,
+      isActive: p.isActive,
+      gameId: p.gameId,
+      type: p.type
+    })),
+    homePlayers: homePlayers.map(p => ({ name: p.username, pos: p.queuePosition })),
+    awayPlayers: awayPlayers.map(p => ({ name: p.username, pos: p.queuePosition })),
+    nextUpPlayers: nextUpPlayers.map(p => ({
+      name: p.username,
+      pos: p.queuePosition,
+      type: p.type,
+      isActive: p.isActive,
+      gameId: p.gameId
+    }))
+  });
 
   // Calculate current year for OG status
   const currentYear = new Date().getFullYear();
@@ -245,6 +271,8 @@ const NewGamePage = () => {
   };
 
   const isLoading = playerMoveMutation.isPending || createGameMutation.isPending;
+
+  const playersCheckedIn = checkins?.length || 0;
 
   return (
     <div className="min-h-screen bg-background">

@@ -82,6 +82,12 @@ export class DatabaseStorage implements IStorage {
       throw new Error("No active game set available");
     }
 
+    console.log('getCheckins - Active game set:', {
+      id: activeGameSet.id,
+      currentQueuePosition: activeGameSet.currentQueuePosition
+    });
+
+    // Get all active checkins for today
     const results = await db
       .select({
         id: checkins.id,
@@ -102,8 +108,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(checkins.clubIndex, clubIndex),
           eq(checkins.isActive, true),
-          eq(checkins.checkInDate, today),
-          sql`${checkins.queuePosition} >= ${activeGameSet.currentQueuePosition}`
+          eq(checkins.checkInDate, today)
         )
       )
       .orderBy(checkins.queuePosition);
@@ -112,7 +117,8 @@ export class DatabaseStorage implements IStorage {
       results.map(r => ({
         username: r.username,
         queuePosition: r.queuePosition,
-        type: r.type
+        type: r.type,
+        isActive: r.isActive
       }))
     );
 
