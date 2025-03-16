@@ -233,11 +233,11 @@ export class DatabaseStorage implements IStorage {
         .where(eq(checkins.id, player.checkinId));
     }
 
-    // Increment current queue position by players_per_team
+    // Increment current queue position by players_per_team * 2 (for both teams)
     await db
       .update(gameSets)
       .set({
-        currentQueuePosition: gameSet.currentQueuePosition + gameSet.playersPerTeam
+        currentQueuePosition: gameSet.currentQueuePosition + (gameSet.playersPerTeam * 2)
       })
       .where(eq(gameSets.id, gameSet.id));
 
