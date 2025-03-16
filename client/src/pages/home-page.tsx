@@ -16,7 +16,7 @@ export default function HomePage() {
   const queryClient = useQueryClient();
   const [gameScores, setGameScores] = useState<Record<number, { showInputs: boolean; team1Score?: number; team2Score?: number }>>({});
 
-  const { data: activeGameSet, isLoading: gameSetLoading } = useQuery<GameSet>({
+  const { data: activeGameSet } = useQuery<GameSet>({
     queryKey: ["/api/game-sets/active"],
     enabled: !!user,
   });
@@ -31,7 +31,7 @@ export default function HomePage() {
     enabled: !!user,
   });
 
-  if (gameSetLoading || gamesLoading || checkinsLoading) {
+  if (gamesLoading || checkinsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -52,8 +52,33 @@ export default function HomePage() {
     return (currentYear - birthYear) >= 75;
   };
 
-  // If there are no active games, all checked in players should be in Next Up
-  const nextUpPlayers = activeGames.length === 0 ? checkins : checkins?.slice(activeGameSet?.playersPerTeam * 2 || 0);
+  // Split players into active games and next up
+  const nextUpPlayers = checkins?.filter(p =>
+    p.isActive &&
+    p.gameId === null
+  ).sort((a, b) => a.queuePosition - b.queuePosition) || [];
+
+  console.log('Debug - Data from queries:', {
+    activeGameSet: {
+      id: activeGameSet?.id,
+      currentQueuePosition: activeGameSet?.currentQueuePosition,
+      playersPerTeam: activeGameSet?.playersPerTeam
+    },
+    checkins: checkins?.map(p => ({
+      username: p.username,
+      pos: p.queuePosition,
+      isActive: p.isActive,
+      gameId: p.gameId,
+      type: p.type
+    })),
+    nextUpPlayers: nextUpPlayers.map(p => ({
+      name: p.username,
+      pos: p.queuePosition,
+      type: p.type,
+      isActive: p.isActive,
+      gameId: p.gameId
+    }))
+  });
 
   // Separate active and finished games
   const activeGamesList = activeGames.filter(game => game.state === 'started');
@@ -247,7 +272,6 @@ export default function HomePage() {
     </Card>
   );
 
-
   // Check if user has permission to end games
   const canEndGames = user?.isRoot || user?.isEngineer;
 
@@ -279,8 +303,16 @@ export default function HomePage() {
               <CardContent>
                 <div className="space-y-6">
                   {/* Active Games */}
-                  {activeGamesList.map(game => renderGameCard(game))}
-                  {/* Next Up Section */}
+                  {activeGamesList.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Active Games</h3>
+                      <div className="space-y-6">
+                        {activeGamesList.map(game => renderGameCard(game))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Next Up Section - Always show if there are players waiting */}
                   {nextUpPlayers.length > 0 && (
                     <div className="mt-8">
                       <h3 className="text-lg font-medium mb-4">Next Up</h3>
@@ -289,7 +321,11 @@ export default function HomePage() {
                           <div key={player.id} className="flex items-center justify-between p-2 rounded-md bg-secondary/30">
                             <div className="flex items-center gap-4">
                               <span className="font-mono text-lg">#{player.queuePosition}</span>
-                              <span>{player.username}</span>
+                              <span>
+                                {player.username}
+                                {player.type === 'win_promoted' && <span className="ml-2 text-sm text-green-400">(WP)</span>}
+                                {player.type === 'loss_promoted' && <span className="ml-2 text-sm text-yellow-400">(LP)</span>}
+                              </span>
                             </div>
                             {isOG(player.birthYear) && (
                               <span className="text-white font-bold">OG</span>
