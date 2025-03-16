@@ -117,7 +117,7 @@ export class DatabaseStorage implements IStorage {
     console.log('getCheckins - Found checkins:', 
       results.map(r => ({
         username: r.username,
-        queuePosition: r.queuePosition,
+        pos: r.queuePosition,
         type: r.type,
         isActive: r.isActive,
         gameId: r.gameId
