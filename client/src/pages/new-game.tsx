@@ -139,7 +139,7 @@ const NewGamePage = () => {
   const nextUpPlayers = checkins?.filter(p =>
     p.isActive &&
     p.gameId === null &&
-    p.queuePosition >= (activeGameSet?.currentQueuePosition || 0)
+    p.queuePosition >= ((activeGameSet?.currentQueuePosition || 0) + playersNeeded)
   ).sort((a, b) => a.queuePosition - b.queuePosition) || [];
 
   console.log('Player groups:', {
