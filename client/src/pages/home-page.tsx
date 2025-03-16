@@ -136,22 +136,16 @@ export default function HomePage() {
 
       console.log('Score update successful, invalidating and refetching queries...');
 
-      // First invalidate all relevant queries
+      // First invalidate all relevant queries in parallel
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/games/active"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/checkins"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] })
+        queryClient.invalidateQueries({ queryKey: ["/api/games/active"], exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["/api/checkins"], exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"], exact: true }),
+        // Also invalidate any potentially affected query keys
+        queryClient.invalidateQueries({ queryKey: [`/api/game-sets/${activeGameSet?.id}/log`], exact: true })
       ]);
 
-      // Force immediate refetch of the data
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ["/api/games/active"] }),
-        queryClient.refetchQueries({ queryKey: ["/api/checkins"] }),
-        queryClient.refetchQueries({ queryKey: ["/api/game-sets/active"] })
-      ]);
-
-      console.log('Queries refetched, checking updated data');
-
+      // Reset game scores state
       setGameScores(prev => ({
         ...prev,
         [gameId]: {
@@ -160,6 +154,16 @@ export default function HomePage() {
           team2Score: undefined
         }
       }));
+
+      // Force an immediate refetch of the data
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["/api/games/active"], exact: true }),
+        queryClient.refetchQueries({ queryKey: ["/api/checkins"], exact: true }),
+        queryClient.refetchQueries({ queryKey: ["/api/game-sets/active"], exact: true }),
+        queryClient.refetchQueries({ queryKey: [`/api/game-sets/${activeGameSet?.id}/log`], exact: true })
+      ]);
+
+      console.log('All queries have been refetched');
     } catch (error) {
       console.error('Error ending game:', error);
     }
