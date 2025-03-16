@@ -438,7 +438,8 @@ export class DatabaseStorage implements IStorage {
         eq(checkins.userId, gamePlayers.userId),
         eq(checkins.gameId, gameId)  // Join with checkins for this game
       ))
-      .where(eq(gamePlayers.gameId, gameId));
+      .where(eq(gamePlayers.gameId, gameId))
+      .orderBy(gamePlayers.team, gamePlayers.userId); // Order by team first, then by userId for consistent ordering
 
     return {
       ...game,
