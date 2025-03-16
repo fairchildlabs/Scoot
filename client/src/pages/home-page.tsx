@@ -19,16 +19,19 @@ export default function HomePage() {
   const { data: activeGameSet } = useQuery<GameSet>({
     queryKey: ["/api/game-sets/active"],
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   const { data: checkins = [], isLoading: checkinsLoading } = useQuery({
     queryKey: ["/api/checkins"],
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   const { data: activeGames = [], isLoading: gamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games/active"],
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   if (gamesLoading || checkinsLoading) {
@@ -115,6 +118,7 @@ export default function HomePage() {
     }
 
     try {
+      console.log(`Submitting final scores for game ${gameId}:`, scores);
       const response = await fetch(`/api/games/${gameId}/score`, {
         method: 'PATCH',
         headers: {
@@ -130,7 +134,24 @@ export default function HomePage() {
         throw new Error('Failed to update game score');
       }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/games/active"] });
+      console.log('Score update successful, invalidating and refetching queries...');
+
+      // First invalidate all relevant queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/games/active"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/checkins"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] })
+      ]);
+
+      // Force immediate refetch of the data
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["/api/games/active"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/checkins"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/game-sets/active"] })
+      ]);
+
+      console.log('Queries refetched, checking updated data');
+
       setGameScores(prev => ({
         ...prev,
         [gameId]: {
