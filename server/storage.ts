@@ -25,7 +25,6 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
   getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]>;
-  createCheckin(userId: number, clubIndex: number): Promise<Checkin>;
   deactivateCheckin(checkinId: number): Promise<void>;
   createGame(setId: number, court: string, state: string): Promise<Game>;
   updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game>;
@@ -35,7 +34,6 @@ export interface IStorage {
   getActiveGameSet(): Promise<GameSet | undefined>;
   getAllGameSets(): Promise<GameSet[]>;
   deactivateGameSet(setId: number): Promise<void>;
-  updateCheckins(setId: number, gameState: GameState): Promise<void>;
   createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer>;
   getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number, queuePosition: number })[] }>;
   getGameSetLog(gameSetId: number): Promise<any[]>;
@@ -97,65 +95,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(checkins.queuePosition);
 
     return results;
-  }
-
-  async createCheckin(userId: number, clubIndex: number): Promise<Checkin> {
-    const now = getCentralTime();
-    const today = getDateString(now);
-
-    console.log(`Attempting to create checkin for user ${userId} at club ${clubIndex}`);
-
-    // Get active game set first
-    const activeGameSet = await this.getActiveGameSet();
-    if (!activeGameSet) {
-      throw new Error("No active game set available for check-ins");
-    }
-
-    // Check for existing active checkin for this user
-    const existingCheckins = await db
-      .select()
-      .from(checkins)
-      .where(
-        and(
-          eq(checkins.userId, userId),
-          eq(checkins.clubIndex, clubIndex),
-          eq(checkins.isActive, true),
-          eq(checkins.checkInDate, today)
-        )
-      );
-
-    // If user already has an active checkin, return it
-    if (existingCheckins.length > 0) {
-      console.log(`User ${userId} already has an active checkin for today:`, existingCheckins[0]);
-      return existingCheckins[0];
-    }
-
-    // Create new checkin with next queue position
-    console.log(`Creating new checkin for user ${userId}`);
-    const [checkin] = await db
-      .insert(checkins)
-      .values({
-        userId,
-        clubIndex,
-        checkInTime: now,
-        isActive: true,
-        checkInDate: today,
-        gameSetId: activeGameSet.id,
-        queuePosition: activeGameSet.queueNextUp, // Use queueNextUp for new check-ins
-        type: 'manual'
-      })
-      .returning();
-
-    // Increment the game set's queueNextUp (tail pointer)
-    await db
-      .update(gameSets)
-      .set({
-        queueNextUp: activeGameSet.queueNextUp + 1
-      })
-      .where(eq(gameSets.id, activeGameSet.id));
-
-    console.log(`Created new checkin:`, checkin);
-    return checkin;
   }
 
   async deactivateCheckin(checkinId: number): Promise<void> {
@@ -267,11 +206,6 @@ export class DatabaseStorage implements IStorage {
       .set({ isActive: false })
       .where(eq(gameSets.isActive, true));
 
-    // Deactivate all active checkins
-    await db
-      .update(checkins)
-      .set({ isActive: false })
-      .where(eq(checkins.isActive, true));
 
     const [newGameSet] = await db
       .insert(gameSets)
@@ -306,63 +240,6 @@ export class DatabaseStorage implements IStorage {
       .update(gameSets)
       .set({ isActive: false })
       .where(eq(gameSets.id, setId));
-  }
-
-  async updateCheckins(setId: number, gameState: GameState): Promise<void> {
-    const today = getDateString(getCentralTime());
-
-    // Get current active checkins to preserve queue positions
-    const currentCheckins = await db
-      .select()
-      .from(checkins)
-      .where(
-        and(
-          eq(checkins.clubIndex, 34),
-          eq(checkins.checkInDate, today),
-          eq(checkins.isActive, true)
-        )
-      );
-
-    // Create a map of userId to current queue position
-    const currentPositions = new Map(
-      currentCheckins.map(c => [c.userId, c.queuePosition])
-    );
-
-    // Deactivate all current checkins
-    await db
-      .update(checkins)
-      .set({ isActive: false })
-      .where(
-        and(
-          eq(checkins.clubIndex, 34),
-          eq(checkins.checkInDate, today),
-          eq(checkins.isActive, true)
-        )
-      );
-
-    // Create new checkins for players based on their positions in the game state
-    // This preserves the order from the game state
-    const allPlayers = [
-      ...gameState.teamA.players,
-      ...gameState.teamB.players,
-      ...gameState.availablePlayers
-    ];
-
-    for (let i = 0; i < allPlayers.length; i++) {
-      const player = allPlayers[i];
-      await db
-        .insert(checkins)
-        .values({
-          userId: player.id,
-          clubIndex: 34,
-          checkInTime: getCentralTime(),
-          isActive: true,
-          checkInDate: today,
-          gameSetId: setId,
-          queuePosition: i + 1, // Use position from game state order
-          type: 'manual'
-        });
-    }
   }
 
   async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
