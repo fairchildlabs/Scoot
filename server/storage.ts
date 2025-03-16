@@ -215,19 +215,26 @@ export class DatabaseStorage implements IStorage {
     if (promotionInfo) {
       console.log('Promotion determined:', promotionInfo);
 
-      // Get players from the promoted team
-      const promotedPlayers = await db
+      // Get all players from the game with their user info including autoup setting
+      const gamePlayers = await db
         .select({
           userId: gamePlayers.userId,
-          team: gamePlayers.team
+          team: gamePlayers.team,
+          autoup: users.autoup,
+          username: users.username
         })
         .from(gamePlayers)
-        .where(
-          and(
-            eq(gamePlayers.gameId, gameId),
-            eq(gamePlayers.team, promotionInfo.team)
-          )
-        );
+        .innerJoin(users, eq(gamePlayers.userId, users.id))
+        .where(eq(gamePlayers.gameId, gameId));
+
+      // Separate players into promoted and non-promoted teams
+      const promotedTeamPlayers = gamePlayers.filter(p => p.team === promotionInfo.team);
+      const nonPromotedTeamPlayers = gamePlayers.filter(p => p.team !== promotionInfo.team);
+
+      console.log('Players by promotion status:', {
+        promoted: promotedTeamPlayers.map(p => p.username),
+        nonPromoted: nonPromotedTeamPlayers.map(p => p.username)
+      });
 
       // Increment queue positions for all checkins >= current_queue_position
       await db
@@ -244,8 +251,8 @@ export class DatabaseStorage implements IStorage {
         );
 
       // Create new checkins for promoted team players
-      for (let i = 0; i < promotedPlayers.length; i++) {
-        const player = promotedPlayers[i];
+      for (let i = 0; i < promotedTeamPlayers.length; i++) {
+        const player = promotedTeamPlayers[i];
         await db
           .insert(checkins)
           .values({
@@ -260,6 +267,38 @@ export class DatabaseStorage implements IStorage {
             gameId: null
           });
       }
+
+      // Handle non-promoted team players - auto check-in based on autoup setting
+      let autoCheckinPosition = gameSet.queueNextUp;
+      for (const player of nonPromotedTeamPlayers) {
+        if (player.autoup) {
+          console.log(`Auto-checking in player ${player.username} at position ${autoCheckinPosition}`);
+          await db
+            .insert(checkins)
+            .values({
+              userId: player.userId,
+              clubIndex: 34,
+              checkInTime: getCentralTime(),
+              isActive: true,
+              checkInDate: getDateString(getCentralTime()),
+              gameSetId: gameSet.id,
+              queuePosition: autoCheckinPosition,
+              type: 'autoup',
+              gameId: null
+            });
+          autoCheckinPosition++;
+        } else {
+          console.log(`Player ${player.username} has autoup disabled, not auto-checking in`);
+        }
+      }
+
+      // Update game set's queue next up pointer
+      await db
+        .update(gameSets)
+        .set({
+          queueNextUp: autoCheckinPosition
+        })
+        .where(eq(gameSets.id, gameSet.id));
     }
 
     return updatedGame;
