@@ -115,7 +115,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(checkins.queuePosition);
 
-    console.log('getCheckins - Found checkins:', 
+    console.log('getCheckins - Found checkins:',
       results.map(r => ({
         username: r.username,
         pos: r.queuePosition,
@@ -216,7 +216,7 @@ export class DatabaseStorage implements IStorage {
       console.log('Promotion determined:', promotionInfo);
 
       // Get all players from the game with their user info including autoup setting
-      const gamePlayers = await db
+      const players = await db
         .select({
           userId: gamePlayers.userId,
           team: gamePlayers.team,
@@ -228,8 +228,8 @@ export class DatabaseStorage implements IStorage {
         .where(eq(gamePlayers.gameId, gameId));
 
       // Separate players into promoted and non-promoted teams
-      const promotedTeamPlayers = gamePlayers.filter(p => p.team === promotionInfo.team);
-      const nonPromotedTeamPlayers = gamePlayers.filter(p => p.team !== promotionInfo.team);
+      const promotedTeamPlayers = players.filter(p => p.team === promotionInfo.team);
+      const nonPromotedTeamPlayers = players.filter(p => p.team !== promotionInfo.team);
 
       console.log('Players by promotion status:', {
         promoted: promotedTeamPlayers.map(p => p.username),
