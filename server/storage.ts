@@ -8,15 +8,6 @@ import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { GameState } from "./game-logic/types";
 
-const scryptAsync = promisify(scrypt);
-
-// Move hashPassword function outside the block scope
-const initHashPassword = async (password: string) => {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
-};
-
 const PostgresSessionStore = connectPg(session);
 
 function getCentralTime() {
@@ -241,8 +232,8 @@ export class DatabaseStorage implements IStorage {
       const nonPromotedTeamPlayers = players.filter(p => p.team !== promotionInfo.team);
 
       console.log('Players by promotion status:', {
-        promoted: promotedTeamPlayers.map(p => `${p.username} (Team ${p.team})`),
-        nonPromoted: nonPromotedTeamPlayers.map(p => `${p.username} (Team ${p.team})`)
+        promoted: promotedTeamPlayers.map(p => p.username),
+        nonPromoted: nonPromotedTeamPlayers.map(p => p.username)
       });
 
       // First, update the queue_next_up pointer for all shifted positions
@@ -268,10 +259,9 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      // Create new checkins for promoted team players - keeping their team position
+      // Create new checkins for promoted team players
       for (let i = 0; i < promotedTeamPlayers.length; i++) {
         const player = promotedTeamPlayers[i];
-        console.log(`Creating promoted checkin for ${player.username} (maintaining Team ${player.team} position)`);
         await db
           .insert(checkins)
           .values({
@@ -291,7 +281,7 @@ export class DatabaseStorage implements IStorage {
       let nextPosition = updatedQueueNextUp;  // Start from the updated queue_next_up position
       for (const player of nonPromotedTeamPlayers) {
         if (player.autoup) {
-          console.log(`Auto-checking in player ${player.username} (Team ${player.team}) at position ${nextPosition}`);
+          console.log(`Auto-checking in player ${player.username} at position ${nextPosition}`);
           await db
             .insert(checkins)
             .values({
@@ -381,60 +371,6 @@ export class DatabaseStorage implements IStorage {
 
   async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
     console.log(`Creating game player for user ${userId} in game ${gameId} on team ${team}`);
-
-    // First get the most recent checkin with promotion status
-    const [promotedCheckin] = await db
-      .select({
-        type: checkins.type,
-        gameId: checkins.gameId,
-        username: users.username,
-        queuePosition: checkins.queuePosition
-      })
-      .from(checkins)
-      .innerJoin(users, eq(checkins.userId, users.id))
-      .where(
-        and(
-          eq(checkins.userId, userId),
-          sql`${checkins.type} IN ('win_promoted', 'loss_promoted')`
-        )
-      )
-      .orderBy(desc(checkins.id))  // Order by checkin ID to get most recent
-      .limit(1);
-
-    console.log('Found promotion status:', promotedCheckin ? {
-      username: promotedCheckin.username,
-      type: promotedCheckin.type,
-      gameId: promotedCheckin.gameId,
-      queuePosition: promotedCheckin.queuePosition
-    } : 'No promotion found');
-
-    // If player was promoted, get their team from that game
-    if (promotedCheckin?.gameId) {
-      const [previousGame] = await db
-        .select({
-          team: gamePlayers.team,
-          gameId: gamePlayers.gameId
-        })
-        .from(gamePlayers)
-        .where(
-          and(
-            eq(gamePlayers.gameId, promotedCheckin.gameId),
-            eq(gamePlayers.userId, userId)
-          )
-        );
-
-      console.log('Previous game found:', previousGame ? {
-        username: promotedCheckin.username,
-        previousTeam: previousGame.team,
-        previousGameId: previousGame.gameId,
-        assignedTeam: previousGame ? previousGame.team : team
-      } : 'No previous game found');
-
-      if (previousGame) {
-        team = previousGame.team; // Keep same team assignment (1=Home, 2=Away)
-        console.log(`Promoted player ${promotedCheckin.username} maintaining previous team position: ${team === 1 ? 'Home' : 'Away'} (Team ${team})`);
-      }
-    }
 
     // Create game player entry
     const [gamePlayer] = await db
@@ -712,12 +648,16 @@ export class DatabaseStorage implements IStorage {
 
 export const storage = new DatabaseStorage();
 
-// Make admin initialization asynchronous
 if (process.env.ADMIN_INITIAL_PASSWORD) {
-  // Defer admin initialization to next tick to prevent blocking startup
-  process.nextTick(async () => {
-    console.log('Starting admin initialization...');
-    const hashedPassword = await initHashPassword(process.env.ADMIN_INITIAL_PASSWORD);
+  const scryptAsync = promisify(scrypt);
+
+  async function hashPassword(password: string) {
+    const salt = randomBytes(16).toString("hex");
+    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+    return `${buf.toString("hex")}.${salt}`;
+  }
+
+  hashPassword(process.env.ADMIN_INITIAL_PASSWORD).then(async hashedPassword => {
     const existingAdmin = await storage.getUserByUsername("scuzzydude");
     if (!existingAdmin) {
       await storage.createUser({
@@ -734,9 +674,6 @@ if (process.env.ADMIN_INITIAL_PASSWORD) {
         isEngineer: true,
         isRoot: true,
       });
-      console.log('Admin initialization completed');
-    } else {
-      console.log('Admin user already exists');
     }
   });
 }
