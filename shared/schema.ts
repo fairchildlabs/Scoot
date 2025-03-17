@@ -45,7 +45,7 @@ export const gameSets = pgTable("game_sets", {
   isActive: boolean("is_active").notNull().default(true),
   numberOfCourts: integer("number_of_courts").notNull().default(2),
   currentQueuePosition: integer("current_queue_position").notNull().default(1),
-  queueNextUp: integer("queue_next_up").notNull().default(1),
+  queueNextUp: integer("queue_next_up").notNull().default(1), // New field for tracking next check-in position
 });
 
 export const games = pgTable("games", {
@@ -69,9 +69,8 @@ export const checkins = pgTable("checkins", {
   isActive: boolean("is_active").notNull().default(true),
   clubIndex: integer("club_index").notNull().default(34),
   checkInDate: text("check_in_date").notNull(),
-  gameId: integer("game_id"),
-  type: text("type").notNull().default('manual'),
-  team: integer("team"),  // New column: team number (1 or 2, or null if not assigned)
+  gameId: integer("game_id"), // Reference to the game this checkin is related to
+  type: text("type").notNull().default('manual'), // Type of checkin
 });
 
 export const gamePlayers = pgTable("game_players", {

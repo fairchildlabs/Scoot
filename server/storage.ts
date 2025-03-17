@@ -236,16 +236,7 @@ export class DatabaseStorage implements IStorage {
         nonPromoted: nonPromotedTeamPlayers.map(p => p.username)
       });
 
-      // First, update the queue_next_up pointer for all shifted positions
-      const updatedQueueNextUp = gameSet.queueNextUp + gameSet.playersPerTeam;
-      await db
-        .update(gameSets)
-        .set({
-          queueNextUp: updatedQueueNextUp
-        })
-        .where(eq(gameSets.id, gameSet.id));
-
-      // Then increment queue positions for all checkins >= current_queue_position
+      // Increment queue positions for all checkins >= current_queue_position
       await db
         .update(checkins)
         .set({
@@ -278,10 +269,10 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Handle non-promoted team players - auto check-in based on autoup setting
-      let nextPosition = updatedQueueNextUp;  // Start from the updated queue_next_up position
+      let autoCheckinPosition = gameSet.queueNextUp;
       for (const player of nonPromotedTeamPlayers) {
         if (player.autoup) {
-          console.log(`Auto-checking in player ${player.username} at position ${nextPosition}`);
+          console.log(`Auto-checking in player ${player.username} at position ${autoCheckinPosition}`);
           await db
             .insert(checkins)
             .values({
@@ -291,21 +282,21 @@ export class DatabaseStorage implements IStorage {
               isActive: true,
               checkInDate: getDateString(getCentralTime()),
               gameSetId: gameSet.id,
-              queuePosition: nextPosition,
+              queuePosition: autoCheckinPosition,
               type: 'autoup',
               gameId: null
             });
-          nextPosition++;
+          autoCheckinPosition++;
         } else {
           console.log(`Player ${player.username} has autoup disabled, not auto-checking in`);
         }
       }
 
-      // Finally, update game set's queue next up pointer to the next available position
+      // Update game set's queue next up pointer
       await db
         .update(gameSets)
         .set({
-          queueNextUp: nextPosition
+          queueNextUp: autoCheckinPosition
         })
         .where(eq(gameSets.id, gameSet.id));
     }
