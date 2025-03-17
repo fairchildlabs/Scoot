@@ -168,7 +168,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game> {
-    console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
+    console.log(`updateGameScore - Processing score update for game ${gameId}:`, { team1Score, team2Score });
 
     // Get the game and game set
     const [game] = await db.select().from(games).where(eq(games.id, gameId));
@@ -226,6 +226,8 @@ export class DatabaseStorage implements IStorage {
         .from(gamePlayers)
         .innerJoin(users, eq(gamePlayers.userId, users.id))
         .where(eq(gamePlayers.gameId, gameId));
+
+      console.log('Retrieved players from game:', players);
 
       // Separate players into promoted and non-promoted teams
       const promotedTeamPlayers = players.filter(p => p.team === promotionInfo.team);
