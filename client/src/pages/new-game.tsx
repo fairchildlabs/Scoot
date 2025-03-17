@@ -43,9 +43,59 @@ const NewGamePage = () => {
       }
 
       const playersNeeded = activeGameSet.playersPerTeam * 2;
-      // Get current home and away team players
-      const homePlayers = checkins?.slice(0, activeGameSet.playersPerTeam) || [];
-      const awayPlayers = checkins?.slice(activeGameSet.playersPerTeam, playersNeeded) || [];
+
+      // Sort players based on their previous team assignment and queue position
+      const sortedPlayers = [...(checkins || [])].sort((a, b) => {
+        // First, ensure promoted players go to their previous teams
+        if (a.team && !b.team) return -1;
+        if (!a.team && b.team) return 1;
+        // Then sort by queue position
+        return a.queuePosition - b.queuePosition;
+      });
+
+      console.log('Initial sorted players:', sortedPlayers.map(p => ({
+        username: p.username,
+        queuePosition: p.queuePosition,
+        team: p.team,
+        type: p.type
+      })));
+
+      // Initialize team arrays
+      let homePlayers: typeof sortedPlayers = [];
+      let awayPlayers: typeof sortedPlayers = [];
+
+      // First, assign promoted players to their previous teams
+      sortedPlayers.forEach(player => {
+        if (player.team === 2 && awayPlayers.length < activeGameSet.playersPerTeam) {
+          awayPlayers.push(player);
+        } else if (player.team === 1 && homePlayers.length < activeGameSet.playersPerTeam) {
+          homePlayers.push(player);
+        }
+      });
+
+      console.log('After assigning promoted players:', {
+        home: homePlayers.map(p => ({
+          username: p.username,
+          team: p.team,
+          type: p.type
+        })),
+        away: awayPlayers.map(p => ({
+          username: p.username,
+          team: p.team,
+          type: p.type
+        }))
+      });
+
+      // Fill remaining spots with non-promoted players
+      sortedPlayers.forEach(player => {
+        if (!player.team) {
+          if (homePlayers.length < activeGameSet.playersPerTeam) {
+            homePlayers.push(player);
+          } else if (awayPlayers.length < activeGameSet.playersPerTeam) {
+            awayPlayers.push(player);
+          }
+        }
+      });
 
       // Create game data
       const gameData: InsertGame = {
@@ -55,13 +105,32 @@ const NewGamePage = () => {
         state: 'started'
       };
 
-      // Create the game
+      const playerAssignments = [
+        ...homePlayers.map(p => ({ userId: p.userId, team: 1 })),
+        ...awayPlayers.map(p => ({ userId: p.userId, team: 2 }))
+      ];
+
+      console.log('Final player assignments for API request:', {
+        gameData,
+        players: playerAssignments,
+        playerDetails: {
+          home: homePlayers.map(p => ({
+            username: p.username,
+            team: p.team,
+            type: p.type
+          })),
+          away: awayPlayers.map(p => ({
+            username: p.username,
+            team: p.team,
+            type: p.type
+          }))
+        }
+      });
+
+      // Create the game with assigned teams
       const res = await apiRequest("POST", "/api/games", {
         ...gameData,
-        players: [
-          ...homePlayers.map(p => ({ userId: p.userId, team: 1 })),
-          ...awayPlayers.map(p => ({ userId: p.userId, team: 2 }))
-        ]
+        players: playerAssignments
       });
 
       if (!res.ok) {
@@ -185,11 +254,11 @@ const NewGamePage = () => {
       return null;
     };
 
-    console.log('Player data in PlayerCard:', { 
+    console.log('Player data in PlayerCard:', {
       username: player.username,
       type: player.type,
       team: player.team,
-      pos: player.queuePosition 
+      pos: player.queuePosition
     });
 
     const promotionBadge = getPromotionBadge(player.type, player.team);
