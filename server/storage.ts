@@ -115,7 +115,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(checkins.queuePosition);
 
-    console.log('getCheckins - Found checkins:',
+    console.log('getCheckins - Found checkins:', 
       results.map(r => ({
         username: r.username,
         pos: r.queuePosition,
@@ -168,7 +168,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game> {
-    console.log(`updateGameScore - Processing score update for game ${gameId}:`, { team1Score, team2Score });
+    console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
 
     // Get the game and game set
     const [game] = await db.select().from(games).where(eq(games.id, gameId));
@@ -215,28 +215,19 @@ export class DatabaseStorage implements IStorage {
     if (promotionInfo) {
       console.log('Promotion determined:', promotionInfo);
 
-      // Get all players from the game with their user info including autoup setting
-      const players = await db
+      // Get players from the promoted team
+      const promotedPlayers = await db
         .select({
           userId: gamePlayers.userId,
-          team: gamePlayers.team,
-          autoup: users.autoup,
-          username: users.username
+          team: gamePlayers.team
         })
         .from(gamePlayers)
-        .innerJoin(users, eq(gamePlayers.userId, users.id))
-        .where(eq(gamePlayers.gameId, gameId));
-
-      console.log('Retrieved players from game:', players);
-
-      // Separate players into promoted and non-promoted teams
-      const promotedTeamPlayers = players.filter(p => p.team === promotionInfo.team);
-      const nonPromotedTeamPlayers = players.filter(p => p.team !== promotionInfo.team);
-
-      console.log('Players by promotion status:', {
-        promoted: promotedTeamPlayers.map(p => p.username),
-        nonPromoted: nonPromotedTeamPlayers.map(p => p.username)
-      });
+        .where(
+          and(
+            eq(gamePlayers.gameId, gameId),
+            eq(gamePlayers.team, promotionInfo.team)
+          )
+        );
 
       // Increment queue positions for all checkins >= current_queue_position
       await db
@@ -253,8 +244,8 @@ export class DatabaseStorage implements IStorage {
         );
 
       // Create new checkins for promoted team players
-      for (let i = 0; i < promotedTeamPlayers.length; i++) {
-        const player = promotedTeamPlayers[i];
+      for (let i = 0; i < promotedPlayers.length; i++) {
+        const player = promotedPlayers[i];
         await db
           .insert(checkins)
           .values({
@@ -269,38 +260,6 @@ export class DatabaseStorage implements IStorage {
             gameId: null
           });
       }
-
-      // Handle non-promoted team players - auto check-in based on autoup setting
-      let autoCheckinPosition = gameSet.queueNextUp;
-      for (const player of nonPromotedTeamPlayers) {
-        if (player.autoup) {
-          console.log(`Auto-checking in player ${player.username} at position ${autoCheckinPosition}`);
-          await db
-            .insert(checkins)
-            .values({
-              userId: player.userId,
-              clubIndex: 34,
-              checkInTime: getCentralTime(),
-              isActive: true,
-              checkInDate: getDateString(getCentralTime()),
-              gameSetId: gameSet.id,
-              queuePosition: autoCheckinPosition,
-              type: 'autoup',
-              gameId: null
-            });
-          autoCheckinPosition++;
-        } else {
-          console.log(`Player ${player.username} has autoup disabled, not auto-checking in`);
-        }
-      }
-
-      // Update game set's queue next up pointer
-      await db
-        .update(gameSets)
-        .set({
-          queueNextUp: autoCheckinPosition
-        })
-        .where(eq(gameSets.id, gameSet.id));
     }
 
     return updatedGame;
