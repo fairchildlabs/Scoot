@@ -168,7 +168,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game> {
-    console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
+    console.log(`updateGameScore - Processing score update for game ${gameId}:`, { team1Score, team2Score });
 
     // Get the game and game set
     const [game] = await db.select().from(games).where(eq(games.id, gameId));
@@ -215,7 +215,7 @@ export class DatabaseStorage implements IStorage {
     if (promotionInfo) {
       console.log('Promotion determined:', promotionInfo);
 
-      // Get players from the promoted team
+      // Get players from the promoted team with team info
       const promotedPlayers = await db
         .select({
           userId: gamePlayers.userId,
@@ -243,7 +243,7 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      // Create new checkins for promoted team players
+      // Create new checkins for promoted team players including their team number
       for (let i = 0; i < promotedPlayers.length; i++) {
         const player = promotedPlayers[i];
         await db
@@ -257,7 +257,8 @@ export class DatabaseStorage implements IStorage {
             gameSetId: gameSet.id,
             queuePosition: gameSet.currentQueuePosition + i,
             type: promotionInfo.type,
-            gameId: null
+            gameId: null,
+            team: player.team  // Include the team number in the checkin
           });
       }
     }
