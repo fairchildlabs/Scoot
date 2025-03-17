@@ -155,8 +155,8 @@ const NewGamePage = () => {
       gameId: p.gameId,
       type: p.type
     })),
-    homePlayers: homePlayers.map(p => ({ name: p.username, pos: p.queuePosition })),
-    awayPlayers: awayPlayers.map(p => ({ name: p.username, pos: p.queuePosition })),
+    homePlayers: homePlayers.map(p => ({ name: p.username, pos: p.queuePosition, team: 1 })),
+    awayPlayers: awayPlayers.map(p => ({ name: p.username, pos: p.queuePosition, team: 2 })),
     nextUpPlayers: nextUpPlayers.map(p => ({
       name: p.username,
       pos: p.queuePosition,
@@ -173,73 +173,90 @@ const NewGamePage = () => {
     return (currentYear - birthYear) >= 75;
   };
 
-  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => (
-    <div className={`flex items-center justify-between p-2 rounded-md ${
-      isNextUp ? 'bg-secondary/30 text-white' :
-        isAway ? 'bg-black text-white border border-white' :
-          'bg-white text-black'
-    }`}>
-      <div className="flex items-center gap-4">
-        <span className="font-mono text-lg">#{player.queuePosition}</span>
-        <span>
-          {player.username}
-          {player.type === 'win_promoted' && <span className="ml-2 text-sm text-green-400">(WP)</span>}
-          {player.type === 'loss_promoted' && <span className="ml-2 text-sm text-yellow-400">(LP)</span>}
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
-        {isOG(player.birthYear) && (
-          <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
-        )}
-        <Button
-          size="icon"
-          variant="outline"
-          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => {
-            const playerNumber = player.queuePosition;
-            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT', playerNumber });
-          }}
-          disabled={playerMoveMutation.isPending}
-        >
-          {playerMoveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-        </Button>
-        <Button
-          size="icon"
-          variant="outline"
-          className="rounded-full h-8 w-8 border-white text-white hover:text-white"
-          onClick={() => {
-            const playerNumber = player.queuePosition;
-            playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP', playerNumber });
-          }}
-          disabled={playerMoveMutation.isPending}
-        >
-          {playerMoveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandMetal className="h-4 w-4" />}
-        </Button>
-        {!isNextUp && (
+  const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => {
+    // Helper function to get promotion badge text
+    const getPromotionBadge = (type: string, team: number | null) => {
+      if (type === 'win_promoted') {
+        return team === 1 ? 'WP-H' : 'WP-A';
+      } else if (type === 'loss_promoted') {
+        return team === 1 ? 'LP-H' : 'LP-A';
+      }
+      return null;
+    };
+
+    const promotionBadge = getPromotionBadge(player.type, player.team);
+
+    return (
+      <div className={`flex items-center justify-between p-2 rounded-md ${
+        isNextUp ? 'bg-secondary/30 text-white' :
+          isAway ? 'bg-black text-white border border-white' :
+            'bg-white text-black'
+      }`}>
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-lg">#{player.queuePosition}</span>
+          <span>
+            {player.username}
+            {promotionBadge && (
+              <span className={`ml-2 text-sm ${player.type === 'win_promoted' ? 'text-green-400' : 'text-yellow-400'}`}>
+                ({promotionBadge})
+              </span>
+            )}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {isOG(player.birthYear) && (
+            <span className={`font-bold ${isNextUp ? 'text-white' : 'text-primary'}`}>OG</span>
+          )}
           <Button
             size="icon"
             variant="outline"
             className="rounded-full h-8 w-8 border-white text-white hover:text-white"
             onClick={() => {
               const playerNumber = player.queuePosition;
-              playerMoveMutation.mutate({
-                playerId: player.userId,
-                moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP',
-                playerNumber
-              });
+              playerMoveMutation.mutate({ playerId: player.userId, moveType: 'CHECKOUT', playerNumber });
             }}
             disabled={playerMoveMutation.isPending}
           >
-            {playerMoveMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />
-            )}
+            {playerMoveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
           </Button>
-        )}
+          <Button
+            size="icon"
+            variant="outline"
+            className="rounded-full h-8 w-8 border-white text-white hover:text-white"
+            onClick={() => {
+              const playerNumber = player.queuePosition;
+              playerMoveMutation.mutate({ playerId: player.userId, moveType: 'BUMP', playerNumber });
+            }}
+            disabled={playerMoveMutation.isPending}
+          >
+            {playerMoveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <HandMetal className="h-4 w-4" />}
+          </Button>
+          {!isNextUp && (
+            <Button
+              size="icon"
+              variant="outline"
+              className="rounded-full h-8 w-8 border-white text-white hover:text-white"
+              onClick={() => {
+                const playerNumber = player.queuePosition;
+                playerMoveMutation.mutate({
+                  playerId: player.userId,
+                  moveType: isAway ? 'VERTICAL_SWAP' : 'HORIZONTAL_SWAP',
+                  playerNumber
+                });
+              }}
+              disabled={playerMoveMutation.isPending}
+            >
+              {playerMoveMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                isAway ? <ArrowDown className="h-4 w-4" /> : <ArrowLeftRight className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Generate court selection UI based on number of courts
   const CourtSelection = () => {
