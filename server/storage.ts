@@ -232,8 +232,8 @@ export class DatabaseStorage implements IStorage {
       const nonPromotedTeamPlayers = players.filter(p => p.team !== promotionInfo.team);
 
       console.log('Players by promotion status:', {
-        promoted: promotedTeamPlayers.map(p => p.username),
-        nonPromoted: nonPromotedTeamPlayers.map(p => p.username)
+        promoted: promotedTeamPlayers.map(p => `${p.username} (Team ${p.team})`),
+        nonPromoted: nonPromotedTeamPlayers.map(p => `${p.username} (Team ${p.team})`)
       });
 
       // First, update the queue_next_up pointer for all shifted positions
@@ -259,9 +259,10 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      // Create new checkins for promoted team players
+      // Create new checkins for promoted team players - keeping their team position
       for (let i = 0; i < promotedTeamPlayers.length; i++) {
         const player = promotedTeamPlayers[i];
+        console.log(`Creating promoted checkin for ${player.username} (maintaining Team ${player.team} position)`);
         await db
           .insert(checkins)
           .values({
@@ -281,7 +282,7 @@ export class DatabaseStorage implements IStorage {
       let nextPosition = updatedQueueNextUp;  // Start from the updated queue_next_up position
       for (const player of nonPromotedTeamPlayers) {
         if (player.autoup) {
-          console.log(`Auto-checking in player ${player.username} at position ${nextPosition}`);
+          console.log(`Auto-checking in player ${player.username} (Team ${player.team}) at position ${nextPosition}`);
           await db
             .insert(checkins)
             .values({
@@ -371,6 +372,39 @@ export class DatabaseStorage implements IStorage {
 
   async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
     console.log(`Creating game player for user ${userId} in game ${gameId} on team ${team}`);
+
+    // Get user's previous game and team assignment
+    const [previousGamePlayer] = await db
+      .select({
+        gameId: gamePlayers.gameId,
+        team: gamePlayers.team,
+        username: users.username
+      })
+      .from(gamePlayers)
+      .innerJoin(users, eq(users.id, gamePlayers.userId))
+      .where(eq(gamePlayers.userId, userId))
+      .orderBy(desc(gamePlayers.gameId))
+      .limit(1);
+
+    // If player was promoted and has a previous game, maintain their Home/Away position
+    if (previousGamePlayer) {
+      const [playerCheckin] = await db
+        .select({
+          type: checkins.type
+        })
+        .from(checkins)
+        .where(
+          and(
+            eq(checkins.userId, userId),
+            eq(checkins.gameId, previousGamePlayer.gameId)
+          )
+        );
+
+      if (playerCheckin && (playerCheckin.type === 'win_promoted' || playerCheckin.type === 'loss_promoted')) {
+        team = previousGamePlayer.team; // Maintain same team assignment (1=Home, 2=Away)
+        console.log(`Promoted player ${previousGamePlayer.username} maintaining previous team position: ${team === 1 ? 'Home' : 'Away'}`);
+      }
+    }
 
     // Create game player entry
     const [gamePlayer] = await db
