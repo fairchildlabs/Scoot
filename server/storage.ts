@@ -102,7 +102,8 @@ export class DatabaseStorage implements IStorage {
         birthYear: users.birthYear,
         gameSetId: checkins.gameSetId,
         type: checkins.type,
-        gameId: checkins.gameId
+        gameId: checkins.gameId,
+        team: checkins.team  // Add team to the selected fields
       })
       .from(checkins)
       .innerJoin(users, eq(checkins.userId, users.id))
@@ -121,7 +122,8 @@ export class DatabaseStorage implements IStorage {
         pos: r.queuePosition,
         type: r.type,
         isActive: r.isActive,
-        gameId: r.gameId
+        gameId: r.gameId,
+        team: r.team  // Add team to the logged data
       }))
     );
 
