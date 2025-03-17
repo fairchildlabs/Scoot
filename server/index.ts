@@ -58,20 +58,27 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  const tryPort = (port: number): Promise<number> => {
+  // Modified port binding logic with better error handling and logging
+  const startServer = (port: number): Promise<number> => {
     return new Promise((resolve, reject) => {
-      const tryServer = server.listen({
+      log(`Attempting to start server on port ${port}...`);
+
+      const serverInstance = server.listen({
         port,
         host: "0.0.0.0",
         reusePort: true,
-      }, () => {
+      });
+
+      serverInstance.once('listening', () => {
+        log(`Server successfully started on port ${port}`);
         resolve(port);
       });
 
-      tryServer.on('error', (err: any) => {
+      serverInstance.once('error', (err: any) => {
         if (err.code === 'EADDRINUSE') {
-          log(`Port ${port} is in use, trying port ${port + 1}`);
-          tryPort(port + 1).then(resolve).catch(reject);
+          log(`Port ${port} is in use, will try port ${port + 1}`);
+          serverInstance.close();
+          startServer(port + 1).then(resolve).catch(reject);
         } else {
           reject(err);
         }
@@ -79,10 +86,11 @@ app.use((req, res, next) => {
     });
   };
 
-  tryPort(5000).then(usedPort => {
-    log(`serving on port ${usedPort}`);
-  }).catch(err => {
-    log(`Failed to start server: ${err.message}`);
+  try {
+    const port = await startServer(5000);
+    log(`Server is running on port ${port}`);
+  } catch (err) {
+    log(`Failed to start server: ${(err as Error).message}`);
     process.exit(1);
-  });
+  }
 })();

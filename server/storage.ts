@@ -25,7 +25,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
   getCheckins(clubIndex: number): Promise<(Checkin & { username: string })[]>;
-  createCheckin(userId: number, clubIndex: number): Promise<Checkin>;
+  createCheckin(userId: number, clubIndex: number, team?: number): Promise<Checkin>;
   deactivateCheckin(checkinId: number): Promise<void>;
   createGame(setId: number, court: string, state: string): Promise<Game>;
   updateGameScore(gameId: number, team1Score: number, team2Score: number): Promise<Game>;
@@ -177,55 +177,22 @@ export class DatabaseStorage implements IStorage {
     const [gameSet] = await db.select().from(gameSets).where(eq(gameSets.id, game.setId));
     if (!gameSet) throw new Error(`Game set ${game.setId} not found`);
 
-    // Log all active checkins before update
-    const activeCheckins = await db
+    // Get all players from the game with their user info including autoup setting
+    const players = await db
       .select({
-        id: checkins.id,
-        userId: checkins.userId,
-        username: users.username,
-        isActive: checkins.isActive
+        userId: gamePlayers.userId,
+        team: gamePlayers.team,
+        autoup: users.autoup,
+        username: users.username
       })
-      .from(checkins)
-      .innerJoin(users, eq(checkins.userId, users.id))
-      .where(eq(checkins.gameId, gameId));
-
-    console.log(`Found ${activeCheckins.length} checkins for game ${gameId} before deactivation:`,
-      activeCheckins.map(c => `${c.username} (Active: ${c.isActive})`));
-
-    // Deactivate ALL checkins for this game directly
-    await db
-      .update(checkins)
-      .set({ isActive: false })
-      .where(eq(checkins.gameId, gameId));
-
-    // Update game scores and status
-    const [updatedGame] = await db
-      .update(games)
-      .set({
-        team1Score,
-        team2Score,
-        endTime: new Date(),
-        state: 'final'
-      })
-      .where(eq(games.id, gameId))
-      .returning();
+      .from(gamePlayers)
+      .innerJoin(users, eq(gamePlayers.userId, users.id))
+      .where(eq(gamePlayers.gameId, gameId));
 
     // Determine promotion type and team
     const promotionInfo = await this.determinePromotionType(gameId);
     if (promotionInfo) {
       console.log('Promotion determined:', promotionInfo);
-
-      // Get all players from the game with their user info including autoup setting
-      const players = await db
-        .select({
-          userId: gamePlayers.userId,
-          team: gamePlayers.team,
-          autoup: users.autoup,
-          username: users.username
-        })
-        .from(gamePlayers)
-        .innerJoin(users, eq(gamePlayers.userId, users.id))
-        .where(eq(gamePlayers.gameId, gameId));
 
       // Separate players into promoted and non-promoted teams
       const promotedTeamPlayers = players.filter(p => p.team === promotionInfo.team);
@@ -273,12 +240,13 @@ export class DatabaseStorage implements IStorage {
             gameSetId: gameSet.id,
             queuePosition: gameSet.currentQueuePosition + i,
             type: promotionInfo.type,
-            gameId: null
+            gameId: null,
+            team: player.team // Include the team information
           });
       }
 
       // Handle non-promoted team players - auto check-in based on autoup setting
-      let nextPosition = updatedQueueNextUp;  // Start from the updated queue_next_up position
+      let nextPosition = updatedQueueNextUp;
       for (const player of nonPromotedTeamPlayers) {
         if (player.autoup) {
           console.log(`Auto-checking in player ${player.username} at position ${nextPosition}`);
@@ -293,7 +261,8 @@ export class DatabaseStorage implements IStorage {
               gameSetId: gameSet.id,
               queuePosition: nextPosition,
               type: 'autoup',
-              gameId: null
+              gameId: null,
+              team: player.team // Include the team information
             });
           nextPosition++;
         } else {
@@ -309,6 +278,18 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(gameSets.id, gameSet.id));
     }
+
+    // Update game scores and status
+    const [updatedGame] = await db
+      .update(games)
+      .set({
+        team1Score,
+        team2Score,
+        endTime: new Date(),
+        state: 'final'
+      })
+      .where(eq(games.id, gameId))
+      .returning();
 
     return updatedGame;
   }
@@ -585,7 +566,7 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async createCheckin(userId: number, clubIndex: number): Promise<Checkin> {
+  async createCheckin(userId: number, clubIndex: number, team?: number): Promise<Checkin> {
     const now = getCentralTime();
     const today = getDateString(now);
 
@@ -629,7 +610,8 @@ export class DatabaseStorage implements IStorage {
         gameSetId: activeGameSet.id,
         queuePosition: activeGameSet.queueNextUp,
         type: 'manual',
-        gameId: null // Ensure gameId starts as null
+        gameId: null,
+        team: team // Include team if provided
       })
       .returning();
 
