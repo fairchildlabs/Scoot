@@ -8,6 +8,15 @@ import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { GameState } from "./game-logic/types";
 
+const scryptAsync = promisify(scrypt);
+
+// Move hashPassword function outside the block scope
+const initHashPassword = async (password: string) => {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+};
+
 const PostgresSessionStore = connectPg(session);
 
 function getCentralTime() {
@@ -373,36 +382,57 @@ export class DatabaseStorage implements IStorage {
   async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
     console.log(`Creating game player for user ${userId} in game ${gameId} on team ${team}`);
 
-    // Get user's previous game and team assignment
-    const [previousGamePlayer] = await db
+    // First get the most recent checkin with promotion status
+    const [promotedCheckin] = await db
       .select({
-        gameId: gamePlayers.gameId,
-        team: gamePlayers.team,
-        username: users.username
+        type: checkins.type,
+        gameId: checkins.gameId,
+        username: users.username,
+        queuePosition: checkins.queuePosition
       })
-      .from(gamePlayers)
-      .innerJoin(users, eq(users.id, gamePlayers.userId))
-      .where(eq(gamePlayers.userId, userId))
-      .orderBy(desc(gamePlayers.gameId))
+      .from(checkins)
+      .innerJoin(users, eq(checkins.userId, users.id))
+      .where(
+        and(
+          eq(checkins.userId, userId),
+          sql`${checkins.type} IN ('win_promoted', 'loss_promoted')`
+        )
+      )
+      .orderBy(desc(checkins.id))  // Order by checkin ID to get most recent
       .limit(1);
 
-    // If player was promoted and has a previous game, maintain their Home/Away position
-    if (previousGamePlayer) {
-      const [playerCheckin] = await db
+    console.log('Found promotion status:', promotedCheckin ? {
+      username: promotedCheckin.username,
+      type: promotedCheckin.type,
+      gameId: promotedCheckin.gameId,
+      queuePosition: promotedCheckin.queuePosition
+    } : 'No promotion found');
+
+    // If player was promoted, get their team from that game
+    if (promotedCheckin?.gameId) {
+      const [previousGame] = await db
         .select({
-          type: checkins.type
+          team: gamePlayers.team,
+          gameId: gamePlayers.gameId
         })
-        .from(checkins)
+        .from(gamePlayers)
         .where(
           and(
-            eq(checkins.userId, userId),
-            eq(checkins.gameId, previousGamePlayer.gameId)
+            eq(gamePlayers.gameId, promotedCheckin.gameId),
+            eq(gamePlayers.userId, userId)
           )
         );
 
-      if (playerCheckin && (playerCheckin.type === 'win_promoted' || playerCheckin.type === 'loss_promoted')) {
-        team = previousGamePlayer.team; // Maintain same team assignment (1=Home, 2=Away)
-        console.log(`Promoted player ${previousGamePlayer.username} maintaining previous team position: ${team === 1 ? 'Home' : 'Away'}`);
+      console.log('Previous game found:', previousGame ? {
+        username: promotedCheckin.username,
+        previousTeam: previousGame.team,
+        previousGameId: previousGame.gameId,
+        assignedTeam: previousGame ? previousGame.team : team
+      } : 'No previous game found');
+
+      if (previousGame) {
+        team = previousGame.team; // Keep same team assignment (1=Home, 2=Away)
+        console.log(`Promoted player ${promotedCheckin.username} maintaining previous team position: ${team === 1 ? 'Home' : 'Away'} (Team ${team})`);
       }
     }
 
@@ -682,16 +712,12 @@ export class DatabaseStorage implements IStorage {
 
 export const storage = new DatabaseStorage();
 
+// Make admin initialization asynchronous
 if (process.env.ADMIN_INITIAL_PASSWORD) {
-  const scryptAsync = promisify(scrypt);
-
-  async function hashPassword(password: string) {
-    const salt = randomBytes(16).toString("hex");
-    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-    return `${buf.toString("hex")}.${salt}`;
-  }
-
-  hashPassword(process.env.ADMIN_INITIAL_PASSWORD).then(async hashedPassword => {
+  // Defer admin initialization to next tick to prevent blocking startup
+  process.nextTick(async () => {
+    console.log('Starting admin initialization...');
+    const hashedPassword = await initHashPassword(process.env.ADMIN_INITIAL_PASSWORD);
     const existingAdmin = await storage.getUserByUsername("scuzzydude");
     if (!existingAdmin) {
       await storage.createUser({
@@ -708,6 +734,9 @@ if (process.env.ADMIN_INITIAL_PASSWORD) {
         isEngineer: true,
         isRoot: true,
       });
+      console.log('Admin initialization completed');
+    } else {
+      console.log('Admin user already exists');
     }
   });
 }
