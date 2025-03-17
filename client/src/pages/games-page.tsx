@@ -168,15 +168,23 @@ export default function GamesPage() {
     try {
       const response = await fetch("/api/database/reset", {
         method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        throw new Error("Failed to reset database");
+        const errorText = await response.text();
+        throw new Error(`Failed to reset database: ${errorText}`);
       }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/game-sets"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/checkins"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/game-sets"], exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["/api/game-sets/active"], exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["/api/checkins"], exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["/api/games/active"], exact: true })
+      ]);
+
       triggerRefresh();
       toast({
         title: "Success",
@@ -186,7 +194,7 @@ export default function GamesPage() {
       console.error("Error resetting database:", error);
       toast({
         title: "Error",
-        description: "Failed to reset database",
+        description: error instanceof Error ? error.message : "Failed to reset database",
         variant: "destructive",
       });
     }
