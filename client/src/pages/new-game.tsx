@@ -44,11 +44,27 @@ const NewGamePage = () => {
 
       const playersNeeded = activeGameSet.playersPerTeam * 2;
 
+      // Get current home and away team players
+      console.log('Debug - Data from queries:', {
+        activeGameSet: {
+          id: activeGameSet?.id,
+          currentQueuePosition: activeGameSet?.currentQueuePosition,
+          playersPerTeam: activeGameSet?.playersPerTeam
+        },
+        checkins: checkins?.map(p => ({
+          username: p.username,
+          pos: p.queuePosition,
+          isActive: p.isActive,
+          gameId: p.gameId,
+          type: p.type
+        }))
+      });
+
       // Sort players based on their previous team assignment and queue position
       const sortedPlayers = [...(checkins || [])].sort((a, b) => {
         // First, ensure promoted players go to their previous teams
-        if (a.team && !b.team) return -1;
-        if (!a.team && b.team) return 1;
+        if (a.type && !b.type) return -1;
+        if (!a.type && b.type) return 1;
         // Then sort by queue position
         return a.queuePosition - b.queuePosition;
       });
@@ -66,9 +82,20 @@ const NewGamePage = () => {
 
       // First, assign promoted players to their previous teams
       sortedPlayers.forEach(player => {
-        if (player.team === 2 && awayPlayers.length < activeGameSet.playersPerTeam) {
+        const isAwayTeam = player.type?.includes('WP') || player.type?.includes('LP') ?
+          player.type.endsWith('-A') : player.team === 2;
+
+        console.log('Processing player for team assignment:', {
+          username: player.username,
+          type: player.type,
+          currentTeam: player.team,
+          isAwayTeam,
+          promotionType: player.type?.endsWith('-A') ? 'Away' : player.type?.endsWith('-H') ? 'Home' : 'None'
+        });
+
+        if (isAwayTeam && awayPlayers.length < activeGameSet.playersPerTeam) {
           awayPlayers.push(player);
-        } else if (player.team === 1 && homePlayers.length < activeGameSet.playersPerTeam) {
+        } else if (!isAwayTeam && homePlayers.length < activeGameSet.playersPerTeam) {
           homePlayers.push(player);
         }
       });
@@ -77,18 +104,21 @@ const NewGamePage = () => {
         home: homePlayers.map(p => ({
           username: p.username,
           team: p.team,
-          type: p.type
+          type: p.type,
+          position: p.queuePosition
         })),
         away: awayPlayers.map(p => ({
           username: p.username,
           team: p.team,
-          type: p.type
+          type: p.type,
+          position: p.queuePosition
         }))
       });
 
       // Fill remaining spots with non-promoted players
       sortedPlayers.forEach(player => {
-        if (!player.team) {
+        const isAlreadyAssigned = [...homePlayers, ...awayPlayers].some(p => p.userId === player.userId);
+        if (!isAlreadyAssigned) {
           if (homePlayers.length < activeGameSet.playersPerTeam) {
             homePlayers.push(player);
           } else if (awayPlayers.length < activeGameSet.playersPerTeam) {
@@ -201,10 +231,10 @@ const NewGamePage = () => {
     );
   }
 
-  // Split players into home and away teams and next up
+
   const playersNeeded = activeGameSet?.playersPerTeam * 2 || 0;
-  const homePlayers = checkins?.slice(0, activeGameSet?.playersPerTeam || 0) || [];
-  const awayPlayers = checkins?.slice(activeGameSet?.playersPerTeam || 0, playersNeeded) || [];
+  let homePlayers: any[] = [];
+  let awayPlayers: any[] = [];
   const nextUpPlayers = checkins?.filter(p =>
     p.isActive &&
     p.gameId === null &&
@@ -224,8 +254,6 @@ const NewGamePage = () => {
       gameId: p.gameId,
       type: p.type
     })),
-    homePlayers: homePlayers.map(p => ({ name: p.username, pos: p.queuePosition, team: 1 })),
-    awayPlayers: awayPlayers.map(p => ({ name: p.username, pos: p.queuePosition, team: 2 })),
     nextUpPlayers: nextUpPlayers.map(p => ({
       name: p.username,
       pos: p.queuePosition,

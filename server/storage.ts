@@ -584,7 +584,8 @@ export class DatabaseStorage implements IStorage {
         gameSetId: activeGameSet.id,
         queuePosition: activeGameSet.queueNextUp,
         type: 'manual',
-        gameId: null // Ensure gameId starts as null
+        gameId: null, // Ensure gameId starts as null
+        team: null  // Make sure team starts as null for new checkins
       })
       .returning();
 
