@@ -360,16 +360,8 @@ export default function HomePage() {
                               <span className="font-mono text-lg">#{player.queuePosition}</span>
                               <span>
                                 {player.username}
-                                {player.type === 'win_promoted' && (
-                                  <span className="ml-2 text-sm text-green-400">
-                                    {player.team === 1 ? '(WP-H)' : '(WP-A)'}
-                                  </span>
-                                )}
-                                {player.type === 'loss_promoted' && (
-                                  <span className="ml-2 text-sm text-yellow-400">
-                                    {player.team === 1 ? '(LP-H)' : '(LP-A)'}
-                                  </span>
-                                )}
+                                {player.type === 'win_promoted' && <span className="ml-2 text-sm text-green-400">(WP)</span>}
+                                {player.type === 'loss_promoted' && <span className="ml-2 text-sm text-yellow-400">(LP)</span>}
                               </span>
                             </div>
                             {isOG(player.birthYear) && (

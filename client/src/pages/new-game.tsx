@@ -43,9 +43,9 @@ const NewGamePage = () => {
       }
 
       const playersNeeded = activeGameSet.playersPerTeam * 2;
-
-      // Get all eligible players for the game
-      const eligiblePlayers = checkins?.slice(0, playersNeeded) || [];
+      // Get current home and away team players
+      const homePlayers = checkins?.slice(0, activeGameSet.playersPerTeam) || [];
+      const awayPlayers = checkins?.slice(activeGameSet.playersPerTeam, playersNeeded) || [];
 
       // Create game data
       const gameData: InsertGame = {
@@ -55,17 +55,13 @@ const NewGamePage = () => {
         state: 'started'
       };
 
-      // Create player assignments respecting their team field from checkins
-      const playerAssignments = eligiblePlayers.map(p => ({
-        userId: p.userId,
-        // If player has a team assigned (from promotion), use it, otherwise assign based on position
-        team: p.team || (p.queuePosition <= activeGameSet.playersPerTeam ? 1 : 2)
-      }));
-
       // Create the game
       const res = await apiRequest("POST", "/api/games", {
         ...gameData,
-        players: playerAssignments
+        players: [
+          ...homePlayers.map(p => ({ userId: p.userId, team: 1 })),
+          ...awayPlayers.map(p => ({ userId: p.userId, team: 2 }))
+        ]
       });
 
       if (!res.ok) {

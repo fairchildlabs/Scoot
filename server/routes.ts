@@ -139,15 +139,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Missing setId");
       }
 
-      // Get checkins to validate team assignments
-      const checkins = await storage.getCheckins(34);
-      console.log('Creating game with checkins:', checkins.map(c => ({
-        username: c.username,
-        position: c.queuePosition,
-        team: c.team,
-        type: c.type
-      })));
-
       // Create the game
       const game = await storage.createGame(
         req.body.setId,
@@ -159,22 +150,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create player associations if provided
       if (req.body.players && Array.isArray(req.body.players)) {
-        // Log the requested team assignments
-        console.log('Requested player assignments:', req.body.players);
-
         await Promise.all(
           req.body.players.map(async (player: { userId: number; team: number }) => {
-            // Find the player's checkin to respect promotion team assignment
-            const checkin = checkins.find(c => c.userId === player.userId);
-            const finalTeam = checkin?.team || player.team;
-
-            console.log(`Assigning player ${player.userId} to team ${finalTeam}`, {
-              checkinTeam: checkin?.team,
-              requestedTeam: player.team,
-              promotionType: checkin?.type
-            });
-
-            await storage.createGamePlayer(game.id, player.userId, finalTeam);
+            await storage.createGamePlayer(game.id, player.userId, player.team);
           })
         );
       }
