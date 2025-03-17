@@ -176,6 +176,7 @@ const NewGamePage = () => {
   const PlayerCard = ({ player, index, isNextUp = false, isAway = false }: { player: any; index: number; isNextUp?: boolean; isAway?: boolean }) => {
     // Helper function to get promotion badge text
     const getPromotionBadge = (type: string, team: number | null) => {
+      console.log('Promotion badge calculation:', { type, team });
       if (type === 'win_promoted') {
         return team === 1 ? 'WP-H' : 'WP-A';
       } else if (type === 'loss_promoted') {
@@ -183,6 +184,13 @@ const NewGamePage = () => {
       }
       return null;
     };
+
+    console.log('Player data in PlayerCard:', { 
+      username: player.username,
+      type: player.type,
+      team: player.team,
+      pos: player.queuePosition 
+    });
 
     const promotionBadge = getPromotionBadge(player.type, player.team);
 
