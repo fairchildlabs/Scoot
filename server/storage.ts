@@ -45,9 +45,17 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
+    // Configure session store with proper error handling and connection management
     this.sessionStore = new PostgresSessionStore({
       pool,
       createTableIfMissing: true,
+      // Add error handling and connection management
+      errorLog: console.error,
+      pruneSessionInterval: 60 * 15, // changed to 15 minutes
+      // Clear expired sessions frequently
+      //pruneSessionInterval: 900, //This line is redundant.
+      // Don't keep sessions forever
+      ttl: 86400
     });
   }
 
@@ -116,7 +124,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(checkins.queuePosition);
 
-    console.log('getCheckins - Found checkins:', 
+    console.log('getCheckins - Found checkins:',
       results.map(r => ({
         username: r.username,
         pos: r.queuePosition,
@@ -614,7 +622,15 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Singleton instance
+let storageInstance: DatabaseStorage | null = null;
+
+export const storage = (): DatabaseStorage => {
+  if (!storageInstance) {
+    storageInstance = new DatabaseStorage();
+  }
+  return storageInstance;
+};
 
 if (process.env.ADMIN_INITIAL_PASSWORD) {
   const scryptAsync = promisify(scrypt);
@@ -626,9 +642,9 @@ if (process.env.ADMIN_INITIAL_PASSWORD) {
   }
 
   hashPassword(process.env.ADMIN_INITIAL_PASSWORD).then(async hashedPassword => {
-    const existingAdmin = await storage.getUserByUsername("scuzzydude");
+    const existingAdmin = await storage().getUserByUsername("scuzzydude");
     if (!existingAdmin) {
-      await storage.createUser({
+      await storage().createUser({
         username: "scuzzydude",
         password: hashedPassword,
         firstName: null,
