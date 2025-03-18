@@ -8,16 +8,12 @@ import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  console.log("Starting route registration...");
-
-  console.log("Setting up authentication...");
   setupAuth(app);
-  console.log("Authentication setup complete");
 
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
-    const users = await storage().getAllUsers();
+    const users = await storage.getAllUsers();
     res.json(users);
   });
 
@@ -26,18 +22,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user!.isEngineer && !req.user!.isRoot) return res.sendStatus(403);
 
     const userId = parseInt(req.params.id);
-    const user = await storage().updateUser(userId, req.body);
+    const user = await storage.updateUser(userId, req.body);
     res.json(user);
   });
 
   app.get("/api/checkins", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const checkinsData = await storage().getCheckins(34);
+    const checkinsData = await storage.getCheckins(34);
 
     // Get complete user data for each checkin
     const checkinsWithUserData = await Promise.all(
       checkinsData.map(async (checkin) => {
-        const user = await storage().getUser(checkin.userId);
+        const user = await storage.getUser(checkin.userId);
         return {
           ...checkin,
           birthYear: user?.birthYear
@@ -53,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Only prevent duplicate check-ins if the user is checking themselves in
     if (!req.user!.isEngineer && !req.user!.isRoot) {
-      const existingCheckins = await storage().getCheckins(34);
+      const existingCheckins = await storage.getCheckins(34);
       const userAlreadyCheckedIn = existingCheckins.some(
         checkin => checkin.userId === req.user!.id
       );
@@ -64,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const userId = req.user!.isEngineer || req.user!.isRoot ? req.body.userId : req.user!.id;
-    const checkin = await storage().createCheckin(userId, 34);
+    const checkin = await storage.createCheckin(userId, 34);
     res.json(checkin);
   });
 
@@ -74,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       // Get all active checkins
-      const checkinsData = await storage().getCheckins(34);
+      const checkinsData = await storage.getCheckins(34);
 
       console.log('POST /api/checkins/clear - Deactivating checkins:', 
         checkinsData.map(c => ({ id: c.id, userId: c.userId, username: c.username }))
@@ -82,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Deactivate all checkins
       for (const checkin of checkinsData) {
-        await storage().deactivateCheckin(checkin.id);
+        await storage.deactivateCheckin(checkin.id);
       }
 
       console.log('POST /api/checkins/clear - Successfully deactivated all checkins');
@@ -107,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('POST /api/checkins/check-in-all - Found players:', players);
 
       // Get active game set
-      const activeGameSet = await storage().getActiveGameSet();
+      const activeGameSet = await storage.getActiveGameSet();
       if (!activeGameSet) {
         return res.status(400).json({ error: "No active game set available for check-ins" });
       }
@@ -116,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const player of players) {
         try {
           console.log(`Attempting to create checkin for player ${player.username}`);
-          await storage().createCheckin(player.id, 34);
+          await storage.createCheckin(player.id, 34);
         } catch (error) {
           console.error(`Failed to check in player ${player.username}:`, error);
           // Continue with next player even if one fails
@@ -144,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create the game
-      const game = await storage().createGame(
+      const game = await storage.createGame(
         req.body.setId,
         req.body.court || 'West',
         'started'  // Set initial state
@@ -156,13 +152,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.players && Array.isArray(req.body.players)) {
         await Promise.all(
           req.body.players.map(async (player: { userId: number; team: number }) => {
-            await storage().createGamePlayer(game.id, player.userId, player.team);
+            await storage.createGamePlayer(game.id, player.userId, player.team);
           })
         );
       }
 
       // Fetch the complete game data with players
-      const completeGame = await storage().getGame(game.id);
+      const completeGame = await storage.getGame(game.id);
       res.json(completeGame);
     } catch (error) {
       console.error('POST /api/games - Error:', error);
@@ -181,7 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`PATCH /api/games/${gameId}/score - Processing score update:`, { team1Score, team2Score });
 
       // Update game with scores and set state to 'final'
-      const updatedGame = await storage().updateGameScore(gameId, team1Score, team2Score);
+      const updatedGame = await storage.updateGameScore(gameId, team1Score, team2Score);
       res.json(updatedGame);
     } catch (error) {
       console.error('PATCH /api/games/:id/score - Error:', error);
@@ -204,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('POST /api/game-sets - Request body:', req.body);
       const validatedData = insertGameSetSchema.parse(req.body);
       console.log('POST /api/game-sets - Validated data:', validatedData);
-      const gameSet = await storage().createGameSet(req.user!.id, validatedData);
+      const gameSet = await storage.createGameSet(req.user!.id, validatedData);
       console.log('POST /api/game-sets - Created game set:', gameSet);
       res.json(gameSet);
     } catch (error) {
@@ -215,13 +211,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/game-sets/active", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const gameSet = await storage().getActiveGameSet();
+    const gameSet = await storage.getActiveGameSet();
     res.json(gameSet || null);
   });
 
   app.get("/api/game-sets", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const gameSets = await storage().getAllGameSets();
+    const gameSets = await storage.getAllGameSets();
     res.json(gameSets);
   });
 
@@ -229,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.user!.isEngineer) return res.sendStatus(403);
 
-    await storage().deactivateGameSet(parseInt(req.params.id));
+    await storage.deactivateGameSet(parseInt(req.params.id));
     res.sendStatus(200);
   });
 
@@ -238,7 +234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const gameSetId = parseInt(req.params.id);
-      const log = await storage().getGameSetLog(gameSetId);
+      const log = await storage.getGameSetLog(gameSetId);
       res.json(log);
     } catch (error) {
       console.error('GET /api/game-sets/:id/log - Error:', error);
@@ -268,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update the checkins based on the new state
-      await storage().updateCheckins(setId, result.updatedState);
+      await storage.updateCheckins(setId, result.updatedState);
 
       // Return the new state
       res.json(result.updatedState);
@@ -282,7 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       // Get active game set to know how many games to return
-      const activeGameSet = await storage().getActiveGameSet();
+      const activeGameSet = await storage.getActiveGameSet();
       if (!activeGameSet) {
         return res.json([]);
       }
@@ -300,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get complete game data with players for each game
       const gamesWithPlayers = await Promise.all(
-        allGames.map(game => storage().getGame(game.id))
+        allGames.map(game => storage.getGame(game.id))
       );
 
       console.log('GET /api/games/active - Returning games:', gamesWithPlayers);
@@ -382,9 +378,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  console.log("Creating HTTP server...");
   const httpServer = createServer(app);
-  console.log("HTTP server created successfully");
-
   return httpServer;
 }

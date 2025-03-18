@@ -45,17 +45,9 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    // Configure session store with proper error handling and connection management
     this.sessionStore = new PostgresSessionStore({
       pool,
       createTableIfMissing: true,
-      // Add error handling and connection management
-      errorLog: console.error,
-      pruneSessionInterval: 60 * 15, // changed to 15 minutes
-      // Clear expired sessions frequently
-      //pruneSessionInterval: 900, //This line is redundant.
-      // Don't keep sessions forever
-      ttl: 86400
     });
   }
 
@@ -124,7 +116,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(checkins.queuePosition);
 
-    console.log('getCheckins - Found checkins:',
+    console.log('getCheckins - Found checkins:', 
       results.map(r => ({
         username: r.username,
         pos: r.queuePosition,
@@ -335,28 +327,6 @@ export class DatabaseStorage implements IStorage {
   async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
     console.log(`Creating game player for user ${userId} in game ${gameId} on team ${team}`);
 
-    // Get current checkin info for logging
-    const [currentCheckin] = await db
-      .select({
-        id: checkins.id,
-        type: checkins.type,
-        queuePosition: checkins.queuePosition
-      })
-      .from(checkins)
-      .where(
-        and(
-          eq(checkins.userId, userId),
-          eq(checkins.isActive, true)
-        )
-      );
-
-    console.log('Player checkin info:', {
-      userId,
-      checkinId: currentCheckin?.id,
-      promotionType: currentCheckin?.type,
-      queuePosition: currentCheckin?.queuePosition
-    });
-
     // Create game player entry
     const [gamePlayer] = await db
       .insert(gamePlayers)
@@ -368,6 +338,16 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     // Update the player's current active checkin with the game ID
+    const [currentCheckin] = await db
+      .select()
+      .from(checkins)
+      .where(
+        and(
+          eq(checkins.userId, userId),
+          eq(checkins.isActive, true)
+        )
+      );
+
     if (currentCheckin) {
       console.log(`Updating checkin ${currentCheckin.id} with gameId ${gameId}`);
       await db
@@ -622,15 +602,7 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Singleton instance
-let storageInstance: DatabaseStorage | null = null;
-
-export const storage = (): DatabaseStorage => {
-  if (!storageInstance) {
-    storageInstance = new DatabaseStorage();
-  }
-  return storageInstance;
-};
+export const storage = new DatabaseStorage();
 
 if (process.env.ADMIN_INITIAL_PASSWORD) {
   const scryptAsync = promisify(scrypt);
@@ -642,9 +614,9 @@ if (process.env.ADMIN_INITIAL_PASSWORD) {
   }
 
   hashPassword(process.env.ADMIN_INITIAL_PASSWORD).then(async hashedPassword => {
-    const existingAdmin = await storage().getUserByUsername("scuzzydude");
+    const existingAdmin = await storage.getUserByUsername("scuzzydude");
     if (!existingAdmin) {
-      await storage().createUser({
+      await storage.createUser({
         username: "scuzzydude",
         password: hashedPassword,
         firstName: null,

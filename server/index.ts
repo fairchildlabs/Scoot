@@ -1,45 +1,88 @@
-import express from "express";
-
-console.log("Starting minimal server initialization...");
-console.log("Environment PORT:", process.env.PORT);
+import express, { type Request, Response, NextFunction } from "express";
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-// Add an unprotected test route (from original code)
+// Add an unprotected test route
 app.get('/test', (_req, res) => {
   res.send('Hello World - Test Route');
 });
 
-// Basic error handling middleware (from edited code)
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  console.error("Error middleware caught:", { status, message, err });
-  res.status(status).json({ message });
-});
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-// Start server on port 5000 as required by Replit
-console.log("Attempting to bind to port 5000...");
-const server = app.listen(5000, '0.0.0.0', () => {
-  console.log("Server successfully started on port 5000");
-});
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
 
-server.on('error', (err: any) => {
-  console.error("Server startup error:", {
-    code: err.code,
-    errno: err.errno,
-    syscall: err.syscall,
-    address: err.address,
-    port: err.port,
-    stack: err.stack
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
+
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+
+      log(logLine);
+    }
   });
-  process.exit(1);
+
+  next();
 });
 
-process.on('SIGTERM', () => {
-  console.log('Received SIGTERM signal, shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
+(async () => {
+  const server = await registerRoutes(app);
+
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.status(status).json({ message });
+    throw err;
   });
-});
+
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
+
+  const tryPort = (port: number): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      const tryServer = server.listen({
+        port,
+        host: "0.0.0.0",
+        reusePort: true,
+      }, () => {
+        resolve(port);
+      });
+
+      tryServer.on('error', (err: any) => {
+        if (err.code === 'EADDRINUSE') {
+          log(`Port ${port} is in use, trying port ${port + 1}`);
+          tryPort(port + 1).then(resolve).catch(reject);
+        } else {
+          reject(err);
+        }
+      });
+    });
+  };
+
+  tryPort(5000).then(usedPort => {
+    log(`serving on port ${usedPort}`);
+  }).catch(err => {
+    log(`Failed to start server: ${err.message}`);
+    process.exit(1);
+  });
+})();
