@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 console.log("Starting server initialization...");
+console.log("Environment PORT:", process.env.PORT);
 
 const app = express();
 app.use(express.json());
@@ -56,11 +57,11 @@ app.use((req, res, next) => {
       res.status(status).json({ message });
     });
 
-    // Start server first
-    console.log("Attempting to bind to port 5000...");
-    server.listen(5000, '0.0.0.0', async () => {
-      console.log("Server successfully started on port 5000");
-      log("serving on port 5000");
+    // Start server first on port 3000
+    console.log("Attempting to bind to port 3000...");
+    server.listen(3000, '0.0.0.0', async () => {
+      console.log("Server successfully started on port 3000");
+      log("serving on port 3000");
 
       // Setup environment-specific middleware after server is listening
       console.log("Setting up environment-specific middleware...");
@@ -81,7 +82,14 @@ app.use((req, res, next) => {
     });
 
     server.on('error', (err: any) => {
-      console.error("Server error occurred:", err);
+      console.error("Server startup error:", {
+        code: err.code,
+        errno: err.errno,
+        syscall: err.syscall,
+        address: err.address,
+        port: err.port,
+        stack: err.stack
+      });
       process.exit(1);
     });
 
