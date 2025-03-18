@@ -327,6 +327,28 @@ export class DatabaseStorage implements IStorage {
   async createGamePlayer(gameId: number, userId: number, team: number): Promise<GamePlayer> {
     console.log(`Creating game player for user ${userId} in game ${gameId} on team ${team}`);
 
+    // Get current checkin info for logging
+    const [currentCheckin] = await db
+      .select({
+        id: checkins.id,
+        type: checkins.type,
+        queuePosition: checkins.queuePosition
+      })
+      .from(checkins)
+      .where(
+        and(
+          eq(checkins.userId, userId),
+          eq(checkins.isActive, true)
+        )
+      );
+
+    console.log('Player checkin info:', {
+      userId,
+      checkinId: currentCheckin?.id,
+      promotionType: currentCheckin?.type,
+      queuePosition: currentCheckin?.queuePosition
+    });
+
     // Create game player entry
     const [gamePlayer] = await db
       .insert(gamePlayers)
@@ -338,16 +360,6 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     // Update the player's current active checkin with the game ID
-    const [currentCheckin] = await db
-      .select()
-      .from(checkins)
-      .where(
-        and(
-          eq(checkins.userId, userId),
-          eq(checkins.isActive, true)
-        )
-      );
-
     if (currentCheckin) {
       console.log(`Updating checkin ${currentCheckin.id} with gameId ${gameId}`);
       await db

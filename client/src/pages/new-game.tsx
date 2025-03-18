@@ -39,12 +39,11 @@ const NewGamePage = () => {
   const createGameMutation = useMutation({
     mutationFn: async () => {
       if (!activeGameSet) {
-        throw new Error("No active game set available");
+        throw new Error("No active game set");
       }
 
       const playersNeeded = activeGameSet.playersPerTeam * 2;
 
-      // Get current home and away team players
       console.log('Debug - Data from queries:', {
         activeGameSet: {
           id: activeGameSet?.id,
@@ -56,16 +55,23 @@ const NewGamePage = () => {
           pos: p.queuePosition,
           isActive: p.isActive,
           gameId: p.gameId,
-          type: p.type
+          type: p.type,
+          team: p.team
         }))
       });
 
       // Sort players based on their previous team assignment and queue position
       const sortedPlayers = [...(checkins || [])].sort((a, b) => {
-        // First, ensure promoted players go to their previous teams
+        // First sort by promotion type existence
         if (a.type && !b.type) return -1;
         if (!a.type && b.type) return 1;
-        // Then sort by queue position
+
+        // Then sort promoted players by their queue position
+        if (a.type && b.type) {
+          return a.queuePosition - b.queuePosition;
+        }
+
+        // Finally sort non-promoted players by queue position
         return a.queuePosition - b.queuePosition;
       });
 
@@ -73,7 +79,8 @@ const NewGamePage = () => {
         username: p.username,
         queuePosition: p.queuePosition,
         team: p.team,
-        type: p.type
+        type: p.type,
+        isPromoted: !!p.type
       })));
 
       // Initialize team arrays
@@ -82,40 +89,28 @@ const NewGamePage = () => {
 
       // First, assign promoted players to their previous teams
       sortedPlayers.forEach(player => {
-        const isAwayTeam = player.type?.includes('WP') || player.type?.includes('LP') ?
-          player.type.endsWith('-A') : player.team === 2;
+        // Enhanced team assignment logic for promoted players
+        const isPromoted = !!player.type;
+        const isAwayTeam = player.team === 2; // Use the team field directly from the database
 
-        console.log('Processing player for team assignment:', {
+        console.log('Processing promoted player:', {
           username: player.username,
           type: player.type,
           currentTeam: player.team,
-          isAwayTeam,
-          promotionType: player.type?.endsWith('-A') ? 'Away' : player.type?.endsWith('-H') ? 'Home' : 'None'
+          isPromoted,
+          isAwayTeam
         });
 
-        if (isAwayTeam && awayPlayers.length < activeGameSet.playersPerTeam) {
-          awayPlayers.push(player);
-        } else if (!isAwayTeam && homePlayers.length < activeGameSet.playersPerTeam) {
-          homePlayers.push(player);
+        if (isPromoted) {
+          if (isAwayTeam && awayPlayers.length < activeGameSet.playersPerTeam) {
+            awayPlayers.push(player);
+          } else if (!isAwayTeam && homePlayers.length < activeGameSet.playersPerTeam) {
+            homePlayers.push(player);
+          }
         }
       });
 
-      console.log('After assigning promoted players:', {
-        home: homePlayers.map(p => ({
-          username: p.username,
-          team: p.team,
-          type: p.type,
-          position: p.queuePosition
-        })),
-        away: awayPlayers.map(p => ({
-          username: p.username,
-          team: p.team,
-          type: p.type,
-          position: p.queuePosition
-        }))
-      });
-
-      // Fill remaining spots with non-promoted players
+      // Then fill remaining spots with non-promoted players
       sortedPlayers.forEach(player => {
         const isAlreadyAssigned = [...homePlayers, ...awayPlayers].some(p => p.userId === player.userId);
         if (!isAlreadyAssigned) {
@@ -125,6 +120,19 @@ const NewGamePage = () => {
             awayPlayers.push(player);
           }
         }
+      });
+
+      console.log('Final team assignments:', {
+        homePlayers: homePlayers.map(p => ({
+          username: p.username,
+          team: p.team,
+          type: p.type
+        })),
+        awayPlayers: awayPlayers.map(p => ({
+          username: p.username,
+          team: p.team,
+          type: p.type
+        }))
       });
 
       // Create game data
