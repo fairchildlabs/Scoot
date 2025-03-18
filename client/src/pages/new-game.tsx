@@ -233,12 +233,57 @@ const NewGamePage = () => {
 
 
   const playersNeeded = activeGameSet?.playersPerTeam * 2 || 0;
+  const playersPerTeam = activeGameSet?.playersPerTeam || 0;
+  const currentQueuePos = activeGameSet?.currentQueuePosition || 0;
+
+  // Get players eligible for the next game
+  const eligiblePlayers = checkins?.filter(p =>
+    p.isActive &&
+    p.gameId === null &&
+    p.queuePosition >= currentQueuePos &&
+    p.queuePosition < currentQueuePos + playersNeeded
+  ).sort((a, b) => {
+    // First, ensure promoted players go to their previous teams
+    if (a.type && !b.type) return -1;  // Promoted players first
+    if (!a.type && b.type) return 1;
+    // Then sort by queue position
+    return a.queuePosition - b.queuePosition;
+  }) || [];
+
+  // Initialize team arrays
   let homePlayers: any[] = [];
   let awayPlayers: any[] = [];
+
+  // First, assign promoted players to their previous teams
+  eligiblePlayers.forEach(player => {
+    // Check if player should be on away team based on promotion type or previous team
+    const isAwayTeam = player.type?.includes('WP') || player.type?.includes('LP') ?
+      player.type.endsWith('-A') : player.team === 2;
+
+    if (isAwayTeam && awayPlayers.length < playersPerTeam) {
+      awayPlayers.push(player);
+    } else if (!isAwayTeam && homePlayers.length < playersPerTeam) {
+      homePlayers.push(player);
+    }
+  });
+
+  // Fill remaining spots with non-promoted players
+  eligiblePlayers.forEach(player => {
+    const isAlreadyAssigned = [...homePlayers, ...awayPlayers].some(p => p.userId === player.userId);
+    if (!isAlreadyAssigned) {
+      if (homePlayers.length < playersPerTeam) {
+        homePlayers.push(player);
+      } else if (awayPlayers.length < playersPerTeam) {
+        awayPlayers.push(player);
+      }
+    }
+  });
+
+  // Get next up players (those after the current game's players)
   const nextUpPlayers = checkins?.filter(p =>
     p.isActive &&
     p.gameId === null &&
-    p.queuePosition >= ((activeGameSet?.currentQueuePosition || 0) + playersNeeded)
+    p.queuePosition >= (currentQueuePos + playersNeeded)
   ).sort((a, b) => a.queuePosition - b.queuePosition) || [];
 
   console.log('Player groups:', {
@@ -252,6 +297,12 @@ const NewGamePage = () => {
       pos: p.queuePosition,
       isActive: p.isActive,
       gameId: p.gameId,
+      type: p.type
+    })),
+    eligiblePlayers: eligiblePlayers.map(p => ({
+      name: p.username,
+      pos: p.queuePosition,
+      team: p.team,
       type: p.type
     })),
     nextUpPlayers: nextUpPlayers.map(p => ({
