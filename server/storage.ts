@@ -116,7 +116,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(checkins.queuePosition);
 
-    console.log('getCheckins - Found checkins:', 
+    console.log('getCheckins - Found checkins:',
       results.map(r => ({
         username: r.username,
         pos: r.queuePosition,
@@ -231,7 +231,9 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      // Increment queue positions for all checkins >= current_queue_position
+      console.log('Found promoted players:', promotedPlayers.map(p => p.userId));
+
+      // First increment queue positions for all active checkins >= current_queue_position
       await db
         .update(checkins)
         .set({
@@ -245,7 +247,7 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      // Create new checkins for promoted team players including their team number
+      // Then create new checkins for promoted team players including their team number
       for (let i = 0; i < promotedPlayers.length; i++) {
         const player = promotedPlayers[i];
         await db
@@ -262,6 +264,105 @@ export class DatabaseStorage implements IStorage {
             gameId: null,
             team: player.team  // Include the team number in the checkin
           });
+      }
+
+      // Update queue_next_up immediately after creating promoted player checkins
+      console.log('Updating queue_next_up:', {
+        current: gameSet.queueNextUp,
+        increment: gameSet.playersPerTeam,
+        new: gameSet.queueNextUp + gameSet.playersPerTeam
+      });
+
+      await db
+        .update(gameSets)
+        .set({
+          queueNextUp: sql`${gameSets.queueNextUp} + ${gameSet.playersPerTeam}`
+        })
+        .where(eq(gameSets.id, gameSet.id));
+    }
+
+    // Handle auto-up players after promotions are done
+    const gamePlayerIds = await db
+      .select({
+        userId: gamePlayers.userId
+      })
+      .from(gamePlayers)
+      .where(eq(gamePlayers.gameId, gameId));
+
+    // Get the list of promoted player IDs
+    const promotedPlayerIds = promotionInfo ?
+      promotedPlayers.map(p => p.userId) : [];
+
+    console.log('Player IDs:', {
+      allPlayers: gamePlayerIds.map(p => p.userId),
+      promotedPlayers: promotedPlayerIds
+    });
+
+    // Find non-promoted players with autoup enabled
+    const autoUpPlayers = await db
+      .select({
+        id: users.id,
+        username: users.username
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.autoup, true),
+          sql`${users.id} = ANY(${gamePlayerIds.map(p => p.userId)})`,
+          sql`${users.id} != ALL(${promotedPlayerIds})`
+        )
+      );
+
+    console.log('Auto-up players found:', autoUpPlayers.map(p => p.username));
+
+    // Create new checkins for auto-up players
+    for (const player of autoUpPlayers) {
+      // Check if player already has an active checkin
+      const [existingCheckin] = await db
+        .select()
+        .from(checkins)
+        .where(
+          and(
+            eq(checkins.userId, player.id),
+            eq(checkins.isActive, true),
+            eq(checkins.checkInDate, getDateString(getCentralTime()))
+          )
+        );
+
+      if (!existingCheckin) {
+        // Get current queue_next_up value before inserting
+        const [currentGameSet] = await db
+          .select()
+          .from(gameSets)
+          .where(eq(gameSets.id, gameSet.id));
+
+        console.log('Creating auto-up checkin:', {
+          player: player.username,
+          queuePosition: currentGameSet.queueNextUp
+        });
+
+        await db
+          .insert(checkins)
+          .values({
+            userId: player.id,
+            clubIndex: 34,
+            checkInTime: getCentralTime(),
+            isActive: true,
+            checkInDate: getDateString(getCentralTime()),
+            gameSetId: gameSet.id,
+            queuePosition: currentGameSet.queueNextUp,
+            type: 'autoup',
+            gameId: null,
+            team: null
+          });
+
+        // Increment queueNextUp for each auto-up player
+        await db
+          .update(gameSets)
+          .set({
+            queueNextUp: sql`${gameSets.queueNextUp} + 1`
+          })
+          .where(eq(gameSets.id, gameSet.id));
       }
     }
 
