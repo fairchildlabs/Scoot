@@ -263,8 +263,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: result.message });
       }
 
-      // Update checkin status in database
-      await storage.handlePlayerMove(playerId, moveType);
+      // Update checkin status in database - convert moveType to lowercase
+      await storage.handlePlayerMove(playerId, moveType.toLowerCase());
 
       // Return the new state
       res.json(result.updatedState);

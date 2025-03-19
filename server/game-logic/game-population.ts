@@ -36,9 +36,10 @@ export function initializeGameState(config: GameConfig): GameState {
   };
 }
 
-/**
- * Move a player according to the specified move type
- */
+// Update the exported types to include CHECKOUT
+export type MoveType = 'CHECKOUT' | 'BUMP' | 'HORIZONTAL_SWAP' | 'VERTICAL_SWAP';
+
+// Update the movePlayer function to handle the new MoveType
 export function movePlayer(state: GameState, playerId: number, moveType: MoveType): MoveResult {
   const playerIndex = findPlayerIndex(state, playerId);
   if (playerIndex === -1) {
@@ -52,13 +53,13 @@ export function movePlayer(state: GameState, playerId: number, moveType: MoveTyp
   let newState = JSON.parse(JSON.stringify(state)); // Deep clone to avoid mutations
 
   switch (moveType) {
-    case MoveType.CHECKOUT:
+    case 'CHECKOUT':
       return handleCheckout(newState, playerIndex);
-    case MoveType.BUMP:
+    case 'BUMP':
       return handleBump(newState, playerIndex);
-    case MoveType.HORIZONTAL_SWAP:
+    case 'HORIZONTAL_SWAP':
       return handleHorizontalSwap(newState, playerIndex);
-    case MoveType.VERTICAL_SWAP:
+    case 'VERTICAL_SWAP':
       return handleVerticalSwap(newState, playerIndex);
     default:
       return {
