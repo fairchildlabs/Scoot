@@ -65,12 +65,14 @@ app.use((req, res, next) => {
       const tryServer = server.listen({
         port,
         host: "0.0.0.0",
-        reusePort: true,
       });
 
       tryServer.on('listening', () => {
-        log(`Successfully bound to port ${port}`);
-        resolve(port);
+        // Add a short delay before declaring success
+        setTimeout(() => {
+          log(`Successfully bound to port ${port}`);
+          resolve(port);
+        }, 100);
       });
 
       tryServer.on('error', (err: any) => {
@@ -80,7 +82,9 @@ app.use((req, res, next) => {
           if (err.code === 'EADDRINUSE') {
             log(`Port ${port} is in use, attempting port ${port + 1}`);
             // Try next port after current server is fully closed
-            tryPort(port + 1).then(resolve).catch(reject);
+            setTimeout(() => {
+              tryPort(port + 1).then(resolve).catch(reject);
+            }, 100);
           } else {
             log(`Failed to bind to port ${port}: ${err.message}`);
             reject(err);
