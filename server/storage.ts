@@ -1,6 +1,6 @@
 import { users, type User, type InsertUser, checkins, type Checkin, type Game, games, type GamePlayer, gamePlayers, type GameSet, gameSets, type InsertGameSet } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, sql, desc, inArray, not, lt } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, not, lt, gt } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -848,7 +848,39 @@ export class DatabaseStorage implements IStorage {
         players: currentTeamPlayers.map(p => ({ id: p.userId, name: p.username }))
       });
 
-      // Try to find next player in queue
+      // After deactivating current player
+      await db
+        .update(checkins)
+        .set({ isActive: false })
+        .where(eq(checkins.id, currentCheckin.id));
+      console.log(`Deactivated checkin ${currentCheckin.id} for ${currentCheckin.username}`);
+
+      // Decrement queue positions for all players after the checked out player
+      await db
+        .update(checkins)
+        .set({
+          queuePosition: sql`${checkins.queuePosition} - 1`
+        })
+        .where(
+          and(
+            eq(checkins.isActive, true),
+            eq(checkins.gameSetId, activeGameSet.id),
+            eq(checkins.checkInDate, getDateString(getCentralTime())),
+            gt(checkins.queuePosition, currentCheckin.queuePosition)
+          )
+        );
+      console.log(`Decremented queue positions after position ${currentCheckin.queuePosition}`);
+
+      // Decrement game set's queue_next_up
+      await db
+        .update(gameSets)
+        .set({
+          queueNextUp: sql`${gameSets.queueNextUp} - 1`
+        })
+        .where(eq(gameSets.id, activeGameSet.id));
+      console.log(`Decremented game set queue_next_up`);
+
+      // Get the next player in queue (they should now have the checked-out player's position)
       const [nextPlayerCheckin] = await db
         .select({
           id: checkins.id,
@@ -891,7 +923,7 @@ export class DatabaseStorage implements IStorage {
               team: currentCheckin.team
             })
             .where(eq(checkins.id, nextPlayerCheckin.id));
-          console.log(`Updated checkin ${nextPlayerCheckin.id} with game ${currentCheckin.gameId} and team ${currentCheckin.team}`);
+          console.log(`Updated checkin ${nextPlayerCheckin.id} with game${currentCheckin.gameId} and team ${currentCheckin.team}`);
 
           // Add next player to game
           await this.createGamePlayer(
