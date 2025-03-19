@@ -243,7 +243,7 @@ export class DatabaseStorage implements IStorage {
 
       console.log('Found promoted players:', promotedPlayers.map(p => p.userId));
 
-      // First increment queue positions for all active checkins >= current_queue_position
+      // First increment queue positions for all active checkins
       await db
         .update(checkins)
         .set({
@@ -276,7 +276,7 @@ export class DatabaseStorage implements IStorage {
           });
       }
 
-      // Update queue_next_up immediately after creating promoted player checkins
+      // Update queue_next_up
       console.log('Updating queue_next_up:', {
         current: gameSet.queueNextUp,
         increment: gameSet.playersPerTeam,
@@ -323,9 +323,7 @@ export class DatabaseStorage implements IStorage {
         .where(
           and(
             eq(users.autoup, true),
-            gamePlayerIds.length > 0 ?
-              inArray(users.id, gamePlayerIds.map(p => p.userId)) :
-              sql`FALSE`
+            inArray(users.id, gamePlayerIds.map(p => p.userId))
           )
         );
 
