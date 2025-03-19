@@ -42,8 +42,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  log("Starting server initialization...");
-
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -51,7 +49,7 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    console.error("Error:", err);
+    throw err;
   });
 
   if (app.get("env") === "development") {
@@ -60,11 +58,46 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  const port = 5000;
-  server.listen(port, "0.0.0.0", () => {
-    log(`Server successfully started and serving on port ${port}`);
+  const tryPort = (port: number): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      log(`Attempting to bind to port ${port}...`);
+
+      const tryServer = server.listen({
+        port,
+        host: "0.0.0.0",
+      });
+
+      tryServer.on('listening', () => {
+        // Add a short delay before declaring success
+        setTimeout(() => {
+          log(`Successfully bound to port ${port}`);
+          resolve(port);
+        }, 100);
+      });
+
+      tryServer.on('error', (err: any) => {
+        // Ensure server is closed before trying next port
+        tryServer.close(() => {
+          log(`Closed server on port ${port}`);
+          if (err.code === 'EADDRINUSE') {
+            log(`Port ${port} is in use, attempting port ${port + 1}`);
+            // Try next port after current server is fully closed
+            setTimeout(() => {
+              tryPort(port + 1).then(resolve).catch(reject);
+            }, 100);
+          } else {
+            log(`Failed to bind to port ${port}: ${err.message}`);
+            reject(err);
+          }
+        });
+      });
+    });
+  };
+
+  tryPort(5000).then(usedPort => {
+    log(`Server successfully started and serving on port ${usedPort}`);
+  }).catch(err => {
+    log(`Failed to start server: ${err.message}`);
+    process.exit(1);
   });
-})().catch(err => {
-  console.error("Failed to start server:", err);
-  process.exit(1);
-});
+})();
