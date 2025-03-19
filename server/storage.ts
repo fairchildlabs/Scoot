@@ -1,6 +1,6 @@
 import { users, type User, type InsertUser, checkins, type Checkin, type Game, games, type GamePlayer, gamePlayers, type GameSet, gameSets, type InsertGameSet } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, sql, desc, inArray, not } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, not, lt } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -291,56 +291,48 @@ export class DatabaseStorage implements IStorage {
         .where(eq(gameSets.id, gameSet.id));
     }
 
-    // Get the list of promoted player IDs
-    const promotedPlayerIds = promotedPlayers.map(p => p.userId);
-
-    console.log('Player IDs:', {
-      allPlayers: gamePlayerIds.map(p => p.userId),
-      promotedPlayers: promotedPlayerIds
-    });
-
     // Get auto-up players
     let autoUpPlayers = [];
     try {
       console.log('Finding auto-up players:', {
         gamePlayerIds: gamePlayerIds.map(p => p.userId),
         playerCount: gamePlayerIds.length,
-        promotedPlayerIds,
-        query: {
-          autoup: true,
-          userIds: gamePlayerIds.map(p => p.userId),
-          excludeIds: promotedPlayerIds
-        }
+        promotedPlayers: promotedPlayers.map(p => ({ id: p.userId, team: p.team }))
       });
 
-      // First get all potential auto-up players
-      const allAutoUpPlayers = await db
-        .select({
-          id: users.id,
-          username: users.username
-        })
-        .from(users)
-        .where(
-          and(
-            eq(users.autoup, true),
-            inArray(users.id, gamePlayerIds.map(p => p.userId))
-          )
+      // Only query if we have game players to check
+      if (gamePlayerIds.length > 0) {
+        // Find all potential auto-up players
+        const allAutoUpPlayers = await db
+          .select({
+            id: users.id,
+            username: users.username
+          })
+          .from(users)
+          .where(
+            and(
+              eq(users.autoup, true),
+              inArray(users.id, gamePlayerIds.map(p => p.userId))
+            )
+          );
+
+        console.log('Auto-up players found:', {
+          count: allAutoUpPlayers.length,
+          players: allAutoUpPlayers.map(p => p.username)
+        });
+
+        // Filter out promoted players in JavaScript
+        autoUpPlayers = allAutoUpPlayers.filter(
+          player => !promotedPlayers.map(p => p.userId).includes(player.id)
         );
 
-      console.log('Found all potential auto-up players:', {
-        count: allAutoUpPlayers.length,
-        players: allAutoUpPlayers.map(p => p.username)
-      });
-
-      // Filter out promoted players in JavaScript
-      autoUpPlayers = allAutoUpPlayers.filter(
-        player => !promotedPlayerIds.includes(player.id)
-      );
-
-      console.log('After filtering out promoted players:', {
-        count: autoUpPlayers.length,
-        players: autoUpPlayers.map(p => p.username)
-      });
+        console.log('After filtering out promoted players:', {
+          count: autoUpPlayers.length,
+          players: autoUpPlayers.map(p => p.username)
+        });
+      } else {
+        console.log('No game players found, skipping auto-up query');
+      }
     } catch (error: any) {
       console.error('Error finding auto-up players:', {
         error,
@@ -349,7 +341,6 @@ export class DatabaseStorage implements IStorage {
         parameters: error.parameters
       });
       // Continue execution even if auto-up players query fails
-      // This ensures the game can still end properly
     }
 
     // Create new checkins for auto-up players
@@ -561,7 +552,7 @@ export class DatabaseStorage implements IStorage {
 
     if (!game) throw new Error(`Game ${gameId} not found`);
 
-    // Get previous games on this court in this set
+    // Get previous games on this court in this set using lt instead of < for id comparison
     const previousGames = await db
       .select()
       .from(games)
@@ -570,7 +561,7 @@ export class DatabaseStorage implements IStorage {
           eq(games.setId, game.setId),
           eq(games.court, game.court),
           eq(games.state, 'final'),
-          sql`${games.id} < ${gameId}`  // Only get games before this one
+          lt(games.id, gameId)  // Use lt operator instead of raw SQL
         )
       )
       .orderBy(desc(games.id));  // Most recent first
