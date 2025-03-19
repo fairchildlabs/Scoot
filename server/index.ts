@@ -60,27 +60,38 @@ app.use((req, res, next) => {
 
   const tryPort = (port: number): Promise<number> => {
     return new Promise((resolve, reject) => {
+      log(`Attempting to bind to port ${port}...`);
+
       const tryServer = server.listen({
         port,
         host: "0.0.0.0",
         reusePort: true,
-      }, () => {
+      });
+
+      tryServer.on('listening', () => {
+        log(`Successfully bound to port ${port}`);
         resolve(port);
       });
 
       tryServer.on('error', (err: any) => {
-        if (err.code === 'EADDRINUSE') {
-          log(`Port ${port} is in use, trying port ${port + 1}`);
-          tryPort(port + 1).then(resolve).catch(reject);
-        } else {
-          reject(err);
-        }
+        // Ensure server is closed before trying next port
+        tryServer.close(() => {
+          log(`Closed server on port ${port}`);
+          if (err.code === 'EADDRINUSE') {
+            log(`Port ${port} is in use, attempting port ${port + 1}`);
+            // Try next port after current server is fully closed
+            tryPort(port + 1).then(resolve).catch(reject);
+          } else {
+            log(`Failed to bind to port ${port}: ${err.message}`);
+            reject(err);
+          }
+        });
       });
     });
   };
 
   tryPort(5000).then(usedPort => {
-    log(`serving on port ${usedPort}`);
+    log(`Server successfully started and serving on port ${usedPort}`);
   }).catch(err => {
     log(`Failed to start server: ${err.message}`);
     process.exit(1);
