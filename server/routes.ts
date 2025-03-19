@@ -263,8 +263,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: result.message });
       }
 
-      // Update the checkins based on the new state
-      await storage.updateCheckins(setId, result.updatedState);
+      // Update checkin status in database
+      await storage.handlePlayerMove(playerId, moveType);
 
       // Return the new state
       res.json(result.updatedState);
