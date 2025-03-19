@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertGameSetSchema, games, checkins, users, gameSets, gamePlayers } from "@shared/schema";
-import { populateGame, movePlayer, MoveType } from "./game-logic/game-population";
+import { populateGame, type MoveType } from "./game-logic/game-population";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -263,8 +263,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: result.message });
       }
 
-      // Update checkin status in database - convert moveType to lowercase
+      // Handle the player move in storage
       await storage.handlePlayerMove(playerId, moveType.toLowerCase());
+      console.log('Player move handled successfully');
 
       // Return the new state
       res.json(result.updatedState);

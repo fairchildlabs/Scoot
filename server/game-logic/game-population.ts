@@ -36,13 +36,23 @@ export function initializeGameState(config: GameConfig): GameState {
   };
 }
 
-// Update the exported types to include CHECKOUT
-export type MoveType = 'CHECKOUT' | 'BUMP' | 'HORIZONTAL_SWAP' | 'VERTICAL_SWAP';
+// Helper function to find player location
+function findPlayerLocation(state: GameState, playerId: number): { list: 'teamA' | 'teamB' | 'available', index: number } | null {
+  const inTeamA = state.teamA.players.findIndex(p => p.id === playerId);
+  if (inTeamA !== -1) return { list: 'teamA', index: inTeamA };
 
-// Update the movePlayer function to handle the new MoveType
+  const inTeamB = state.teamB.players.findIndex(p => p.id === playerId);
+  if (inTeamB !== -1) return { list: 'teamB', index: inTeamB };
+
+  const inAvailable = state.availablePlayers.findIndex(p => p.id === playerId);
+  if (inAvailable !== -1) return { list: 'available', index: inAvailable };
+
+  return null;
+}
+
 export function movePlayer(state: GameState, playerId: number, moveType: MoveType): MoveResult {
-  const playerIndex = findPlayerIndex(state, playerId);
-  if (playerIndex === -1) {
+  const playerLocation = findPlayerLocation(state, playerId);
+  if (!playerLocation) {
     return {
       success: false,
       message: "Player not found",
@@ -50,17 +60,57 @@ export function movePlayer(state: GameState, playerId: number, moveType: MoveTyp
     };
   }
 
-  let newState = JSON.parse(JSON.stringify(state)); // Deep clone to avoid mutations
+  let newState = JSON.parse(JSON.stringify(state)); // Deep clone
 
   switch (moveType) {
-    case 'CHECKOUT':
-      return handleCheckout(newState, playerIndex);
+    case 'CHECKOUT': {
+      // Only allow checkout for players in teams
+      if (playerLocation.list === 'available') {
+        return {
+          success: false,
+          message: "Can only checkout players from teams",
+          updatedState: state
+        };
+      }
+
+      // Get next available player
+      const replacementPlayer = newState.availablePlayers[0];
+      if (!replacementPlayer) {
+        return {
+          success: false,
+          message: "No available players for replacement",
+          updatedState: state
+        };
+      }
+
+      // Remove replacement player from available list
+      newState.availablePlayers = newState.availablePlayers.slice(1);
+
+      // Replace player in appropriate team
+      const team = playerLocation.list === 'teamA' ? newState.teamA : newState.teamB;
+      const checkedOutPlayer = team.players[playerLocation.index];
+      team.players[playerLocation.index] = replacementPlayer;
+
+      // Add checked out player to end of available list
+      newState.availablePlayers.push(checkedOutPlayer);
+
+      // Update OG counts
+      team.ogCount = countOGPlayers(team.players);
+
+      return {
+        success: true,
+        message: "Player checked out and replaced successfully",
+        updatedState: newState
+      };
+    }
+
+    // Keep other move types as they are...
     case 'BUMP':
-      return handleBump(newState, playerIndex);
+      return handleBump(newState, findPlayerIndex(state, playerId));
     case 'HORIZONTAL_SWAP':
-      return handleHorizontalSwap(newState, playerIndex);
+      return handleHorizontalSwap(newState, findPlayerIndex(state, playerId));
     case 'VERTICAL_SWAP':
-      return handleVerticalSwap(newState, playerIndex);
+      return handleVerticalSwap(newState, findPlayerIndex(state, playerId));
     default:
       return {
         success: false,
