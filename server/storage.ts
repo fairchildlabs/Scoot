@@ -39,6 +39,7 @@ export interface IStorage {
   getGame(gameId: number): Promise<Game & { players: (GamePlayer & { username: string, birthYear?: number, queuePosition: number })[] }>;
   getGameSetLog(gameSetId: number): Promise<any[]>;
   determinePromotionType(gameId: number): Promise<{ type: 'win_promoted' | 'loss_promoted', team: 1 | 2 } | null>;
+  handlePlayerMove(userId: number, moveType: string): Promise<void>; // Added handlePlayerMove
 }
 
 export class DatabaseStorage implements IStorage {
@@ -737,6 +738,32 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`Created new checkin:`, checkin);
     return checkin;
+  }
+
+  async deactivatePlayerCheckin(userId: number): Promise<void> {
+    console.log(`Deactivating checkin for user ${userId}`);
+    const today = getDateString(getCentralTime());
+
+    await db
+      .update(checkins)
+      .set({ isActive: false })
+      .where(
+        and(
+          eq(checkins.userId, userId),
+          eq(checkins.isActive, true),
+          eq(checkins.checkInDate, today)
+        )
+      );
+  }
+
+  async handlePlayerMove(userId: number, moveType: string): Promise<void> {
+    console.log(`Handling player move:`, { userId, moveType });
+
+    if (moveType === 'checkout') {
+      await this.deactivatePlayerCheckin(userId);
+      console.log(`Player ${userId} checked out successfully`);
+    }
+    // Add other move types here as we implement them
   }
 }
 

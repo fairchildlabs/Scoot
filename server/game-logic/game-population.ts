@@ -116,6 +116,7 @@ function handleCheckout(state: GameState, playerIndex: number): MoveResult {
 
     return {
       success: true,
+      message: "Player checked out successfully",
       updatedState: newState
     };
   }
@@ -132,17 +133,26 @@ function handleCheckout(state: GameState, playerIndex: number): MoveResult {
 
   if (playerIndex < teamSize) {
     // Replace in Team A
+    const temp = newState.teamA.players[playerIndex];
     newState.teamA.players[playerIndex] = nextPlayer;
     newState.teamA.ogCount = countOGPlayers(newState.teamA.players);
+    // Add checked out player to the end of available players
+    newState.availablePlayers = [
+      ...state.availablePlayers.slice(1),
+      temp
+    ];
   } else {
     // Replace in Team B
     const teamBIndex = playerIndex - teamSize;
+    const temp = newState.teamB.players[teamBIndex];
     newState.teamB.players[teamBIndex] = nextPlayer;
     newState.teamB.ogCount = countOGPlayers(newState.teamB.players);
+    // Add checked out player to the end of available players
+    newState.availablePlayers = [
+      ...state.availablePlayers.slice(1),
+      temp
+    ];
   }
-
-  // Remove the replacement player from availablePlayers
-  newState.availablePlayers = state.availablePlayers.slice(1);
 
   console.log('Checkout - Result:', {
     teamA: newState.teamA.players.map((p, i) => `${i+1}:${p.username}`),
@@ -152,6 +162,7 @@ function handleCheckout(state: GameState, playerIndex: number): MoveResult {
 
   return {
     success: true,
+    message: "Player checked out and replaced successfully",
     updatedState: newState
   };
 }
