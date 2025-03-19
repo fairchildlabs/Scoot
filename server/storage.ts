@@ -299,7 +299,7 @@ export class DatabaseStorage implements IStorage {
       promotedPlayers: promotedPlayerIds
     });
 
-    // Find non-promoted players with autoup enabled
+    // Get auto-up players
     const autoUpPlayers = await db
       .select({
         id: users.id,
@@ -310,7 +310,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(users.autoup, true),
           sql`${users.id} = ANY(${gamePlayerIds.map(p => p.userId)})`,
-          sql`NOT (${users.id} = ANY(${sql.array(promotedPlayerIds, 'int4')}))`
+          sql`NOT (${users.id} = ANY(${sql`ARRAY[${promotedPlayerIds.join(',')}]::int[]`}))`
         )
       );
 
