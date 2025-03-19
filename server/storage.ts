@@ -1,6 +1,6 @@
 import { users, type User, type InsertUser, checkins, type Checkin, type Game, games, type GamePlayer, gamePlayers, type GameSet, gameSets, type InsertGameSet } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, not } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -300,70 +300,117 @@ export class DatabaseStorage implements IStorage {
     });
 
     // Get auto-up players
-    const autoUpPlayers = await db
-      .select({
-        id: users.id,
-        username: users.username
-      })
-      .from(users)
-      .where(
-        and(
-          eq(users.autoup, true),
-          sql`${users.id} = ANY(${gamePlayerIds.map(p => p.userId)})`,
-          sql`NOT (${users.id} = ANY(${sql`ARRAY[${promotedPlayerIds.join(',')}]::int[]`}))`
-        )
-      );
+    let autoUpPlayers = [];
+    try {
+      console.log('Finding auto-up players:', {
+        gamePlayerIds: gamePlayerIds.map(p => p.userId),
+        playerCount: gamePlayerIds.length,
+        promotedPlayerIds,
+        query: {
+          autoup: true,
+          userIds: gamePlayerIds.map(p => p.userId),
+          excludeIds: promotedPlayerIds
+        }
+      });
 
-    console.log('Auto-up players found:', autoUpPlayers.map(p => p.username));
-
-    // Create new checkins for auto-up players
-    for (const player of autoUpPlayers) {
-      // Check if player already has an active checkin
-      const [existingCheckin] = await db
-        .select()
-        .from(checkins)
+      // First get all potential auto-up players
+      const allAutoUpPlayers = await db
+        .select({
+          id: users.id,
+          username: users.username
+        })
+        .from(users)
         .where(
           and(
-            eq(checkins.userId, player.id),
-            eq(checkins.isActive, true),
-            eq(checkins.checkInDate, getDateString(getCentralTime()))
+            eq(users.autoup, true),
+            gamePlayerIds.length > 0 ?
+              sql`${users.id} = ANY(${sql`ARRAY[${gamePlayerIds.map(p => p.userId)}]::int[]`})` :
+              sql`FALSE`
           )
         );
 
-      if (!existingCheckin) {
-        // Get current queue_next_up value before inserting
-        const [currentGameSet] = await db
+      console.log('Found all potential auto-up players:', {
+        count: allAutoUpPlayers.length,
+        players: allAutoUpPlayers.map(p => p.username)
+      });
+
+      // Filter out promoted players in JavaScript
+      autoUpPlayers = allAutoUpPlayers.filter(
+        player => !promotedPlayerIds.includes(player.id)
+      );
+
+      console.log('After filtering out promoted players:', {
+        count: autoUpPlayers.length,
+        players: autoUpPlayers.map(p => p.username)
+      });
+    } catch (error: any) {
+      console.error('Error finding auto-up players:', {
+        error,
+        stack: error.stack,
+        sql: error.sql,
+        parameters: error.parameters
+      });
+      // Continue execution even if auto-up players query fails
+      // This ensures the game can still end properly
+    }
+
+    // Create new checkins for auto-up players
+    for (const player of autoUpPlayers) {
+      try {
+        // Check if player already has an active checkin
+        const [existingCheckin] = await db
           .select()
-          .from(gameSets)
-          .where(eq(gameSets.id, gameSet.id));
+          .from(checkins)
+          .where(
+            and(
+              eq(checkins.userId, player.id),
+              eq(checkins.isActive, true),
+              eq(checkins.checkInDate, getDateString(getCentralTime()))
+            )
+          );
 
-        console.log('Creating auto-up checkin:', {
-          player: player.username,
-          queuePosition: currentGameSet.queueNextUp
-        });
+        if (!existingCheckin) {
+          // Get current queue_next_up value before inserting
+          const [currentGameSet] = await db
+            .select()
+            .from(gameSets)
+            .where(eq(gameSets.id, gameSet.id));
 
-        await db
-          .insert(checkins)
-          .values({
-            userId: player.id,
-            clubIndex: 34,
-            checkInTime: getCentralTime(),
-            isActive: true,
-            checkInDate: getDateString(getCentralTime()),
-            gameSetId: gameSet.id,
-            queuePosition: currentGameSet.queueNextUp,
-            type: 'autoup',
-            gameId: null,
-            team: null
+          console.log('Creating auto-up checkin:', {
+            player: player.username,
+            queuePosition: currentGameSet.queueNextUp
           });
 
-        // Increment queueNextUp for each auto-up player
-        await db
-          .update(gameSets)
-          .set({
-            queueNextUp: sql`${gameSets.queueNextUp} + 1`
-          })
-          .where(eq(gameSets.id, gameSet.id));
+          await db
+            .insert(checkins)
+            .values({
+              userId: player.id,
+              clubIndex: 34,
+              checkInTime: getCentralTime(),
+              isActive: true,
+              checkInDate: getDateString(getCentralTime()),
+              gameSetId: gameSet.id,
+              queuePosition: currentGameSet.queueNextUp,
+              type: 'autoup',
+              gameId: null,
+              team: null
+            });
+
+          // Increment queueNextUp for each auto-up player
+          await db
+            .update(gameSets)
+            .set({
+              queueNextUp: sql`${gameSets.queueNextUp} + 1`
+            })
+            .where(eq(gameSets.id, gameSet.id));
+        }
+      } catch (error) {
+        console.error('Error processing auto-up player:', {
+          playerId: player.id,
+          playerName: player.username,
+          error
+        });
+        // Continue with next player even if one fails
       }
     }
 
