@@ -310,7 +310,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(users.autoup, true),
           sql`${users.id} = ANY(${gamePlayerIds.map(p => p.userId)})`,
-          sql`${users.id} != ALL(${promotedPlayerIds})`
+          sql`NOT (${users.id} = ANY(${sql.array(promotedPlayerIds, 'int4')}))`
         )
       );
 
