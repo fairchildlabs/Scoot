@@ -42,6 +42,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  log("Starting server initialization...");
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -49,7 +51,7 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    console.error("Error:", err);
   });
 
   if (app.get("env") === "development") {
@@ -58,9 +60,11 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Simplified port binding logic
   const port = 5000;
   server.listen(port, "0.0.0.0", () => {
     log(`Server successfully started and serving on port ${port}`);
   });
-})();
+})().catch(err => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});
