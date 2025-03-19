@@ -214,11 +214,21 @@ export class DatabaseStorage implements IStorage {
 
     // Determine promotion type and team
     const promotionInfo = await this.determinePromotionType(gameId);
-    if (promotionInfo) {
-      console.log('Promotion determined:', promotionInfo);
 
-      // Get players from the promoted team with team info
-      const promotedPlayers = await db
+    // Get all games for this set with player info
+    const gamePlayerIds = await db
+      .select({
+        userId: gamePlayers.userId
+      })
+      .from(gamePlayers)
+      .where(eq(gamePlayers.gameId, gameId));
+
+    // Initialize promotedPlayers outside the if block
+    let promotedPlayers: { userId: number; team: number }[] = [];
+
+    if (promotionInfo) {
+      // Get players from the promoted team
+      promotedPlayers = await db
         .select({
           userId: gamePlayers.userId,
           team: gamePlayers.team
@@ -247,7 +257,7 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      // Then create new checkins for promoted team players including their team number
+      // Then create new checkins for promoted team players
       for (let i = 0; i < promotedPlayers.length; i++) {
         const player = promotedPlayers[i];
         await db
@@ -262,7 +272,7 @@ export class DatabaseStorage implements IStorage {
             queuePosition: gameSet.currentQueuePosition + i,
             type: promotionInfo.type,
             gameId: null,
-            team: player.team  // Include the team number in the checkin
+            team: player.team
           });
       }
 
@@ -281,17 +291,8 @@ export class DatabaseStorage implements IStorage {
         .where(eq(gameSets.id, gameSet.id));
     }
 
-    // Handle auto-up players after promotions are done
-    const gamePlayerIds = await db
-      .select({
-        userId: gamePlayers.userId
-      })
-      .from(gamePlayers)
-      .where(eq(gamePlayers.gameId, gameId));
-
     // Get the list of promoted player IDs
-    const promotedPlayerIds = promotionInfo ?
-      promotedPlayers.map(p => p.userId) : [];
+    const promotedPlayerIds = promotedPlayers.map(p => p.userId);
 
     console.log('Player IDs:', {
       allPlayers: gamePlayerIds.map(p => p.userId),
