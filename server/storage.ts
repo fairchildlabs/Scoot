@@ -324,7 +324,7 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(users.autoup, true),
             gamePlayerIds.length > 0 ?
-              sql`${users.id} = ANY(${sql`ARRAY[${gamePlayerIds.map(p => p.userId)}]::int[]`})` :
+              inArray(users.id, gamePlayerIds.map(p => p.userId)) :
               sql`FALSE`
           )
         );
